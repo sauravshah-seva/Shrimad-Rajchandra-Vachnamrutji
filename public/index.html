@@ -153,7 +153,7 @@ $('toggle').onclick = () => {
 $('authForm').onsubmit = async e => {
   e.preventDefault();
   const c = { email: $('em').value, password: $('pw').value };
-  if (signup) c.options = { data: { full_name: $('nm').value } };
+  if (signup) c.options = { data: { full_name: $('nm').value }, emailRedirectTo: window.location.origin };
   const { data, error } = signup ? await sb.auth.signUp(c) : await sb.auth.signInWithPassword(c);
   if (error) return $('authMsg').textContent = error.message;
   if (signup && !data.session) $('authMsg').textContent = 'Check your email to confirm, then sign in.';
