@@ -78,9 +78,6 @@ body.home #bookTitle,body.home #bookTag,body.home .brand{display:none}
 #toc li button[aria-current=true]{padding-left:calc(26px + (var(--d,1) - 1)*20px)}
 #toc li button[data-d="2"]{font-size:1.05rem}#toc li button[data-d="3"]{font-size:.95rem}
 header .right{display:flex;gap:22px;align-items:center;margin-left:auto}
-#lang{background:none;border:1px solid var(--line);border-radius:6px;padding:4px 8px;color:var(--mute);font-size:.9rem;cursor:pointer}
-#lang option{color:#1c1e3a;background:#fff}
-body.home #lang{color:#fff;border-color:rgba(255,255,255,.55);background:rgba(255,255,255,.14);backdrop-filter:blur(10px)}
 </style>
 </head>
 <body>
@@ -88,7 +85,6 @@ body.home #lang{color:#fff;border-color:rgba(255,255,255,.55);background:rgba(25
 <header>
   <div class="brand" id="brand"></div>
   <div class="right">
-    <select id="lang" aria-label="Language"><option value="en">English</option><option value="gu">ગુજરાતી</option></select>
     <nav id="nav" class="hidden">
       <button class="link" id="goLib" data-i="library">Library</button>
       <button class="link hidden" id="goAdmin" data-i="admin">Admin</button>
@@ -167,28 +163,22 @@ let signup = false, me = {}, chapters = [], current = null, audioFile = null, im
 
 $('brand').textContent = $('bookTitle').textContent = document.title = BOOK.title;
 $('bookTag').textContent = BOOK.tagline;
+
+/* Interface text is English only. Only chapter titles (the index) are Gujarati. */
 const T = {
-  en: { library: 'Library', admin: 'Admin', out: 'Sign out', contents: 'Contents', choose: 'Choose a chapter to begin.',
-    name: 'Your name', email: 'Email', pass: 'Password (6+ characters)', signin: 'Sign in', create: 'Create account',
-    'new': 'New here? Create an account', have: 'Already registered? Sign in',
-    check: 'Check your email to confirm, then sign in.', paused: 'Your access is paused. Please contact the administrator.',
-    empty: 'Chapters will appear here.', pickSub: 'Choose a sub-section from the contents.' },
-  gu: { library: 'પુસ્તકાલય', admin: 'વ્યવસ્થાપક', out: 'બહાર નીકળો', contents: 'અનુક્રમણિકા', choose: 'શરૂ કરવા માટે પ્રકરણ પસંદ કરો.',
-    name: 'તમારું નામ', email: 'ઈમેલ', pass: 'પાસવર્ડ (ઓછામાં ઓછા ૬ અક્ષર)', signin: 'પ્રવેશ કરો', create: 'ખાતું બનાવો',
-    'new': 'નવા છો? ખાતું બનાવો', have: 'પહેલેથી ખાતું છે? પ્રવેશ કરો',
-    check: 'પુષ્ટિ કરવા માટે તમારો ઈમેલ તપાસો, પછી પ્રવેશ કરો.', paused: 'તમારો પ્રવેશ હાલ સ્થગિત છે. કૃપા કરીને વ્યવસ્થાપકનો સંપર્ક કરો.',
-    empty: 'પ્રકરણો અહીં દેખાશે.', pickSub: 'અનુક્રમણિકામાંથી પેટા-વિભાગ પસંદ કરો.' }
+  library: 'Library', admin: 'Admin', out: 'Sign out', contents: 'Contents', choose: 'Choose a chapter to begin.',
+  name: 'Your name', email: 'Email', pass: 'Password (6+ characters)', signin: 'Sign in', create: 'Create account',
+  'new': 'New here? Create an account', have: 'Already registered? Sign in',
+  check: 'Check your email to confirm, then sign in.', paused: 'Your access is paused. Please contact the administrator.',
+  empty: 'Chapters will appear here.', pickSub: 'Choose a sub-section from the contents.'
 };
-let lang = 'en'; try { lang = localStorage.getItem('lang') || 'en'; } catch (e) {}
-const t = k => (T[lang] && T[lang][k]) || T.en[k];
+const t = k => T[k];
 function applyLang() {
-  document.documentElement.lang = lang; $('lang').value = lang;
   document.querySelectorAll('[data-i]').forEach(e => e.textContent = t(e.dataset.i));
   document.querySelectorAll('[data-p]').forEach(e => e.placeholder = t(e.dataset.p));
   $('authBtn').textContent = t(signup ? 'create' : 'signin');
   $('toggle').textContent = t(signup ? 'have' : 'new');
 }
-$('lang').onchange = () => { lang = $('lang').value; try { localStorage.setItem('lang', lang); } catch (e) {} applyLang(); renderToc(); const cc = chapters.find(x => x.id === current); if (cc) openChapter(cc); };
 applyLang();
 const show = v => { document.body.classList.toggle('home', v === 'auth'); ['auth', 'lib', 'admin'].forEach(s => $(s).classList.toggle('hidden', s !== v)); };
 
@@ -232,7 +222,8 @@ const desc = c => kids(c.id).flatMap(k => [k, ...desc(k)]);
 const heightOf = c => 1 + Math.max(0, ...kids(c.id).map(heightOf));
 const pad = d => '\u00A0\u00A0'.repeat(d - 1);
 const expanded = new Set();
-const ttl = c => (lang === 'gu' && c.title_gu) ? c.title_gu : c.title;
+/* Chapter titles always show in Gujarati, falling back to English if none entered */
+const ttl = c => c.title_gu || c.title;
 
 async function loadChapters() {
   const { data } = await sb.from('chapters').select('*').order('position');
