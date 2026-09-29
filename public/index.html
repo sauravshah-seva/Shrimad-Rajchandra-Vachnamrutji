@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sacred Pages</title>
+<title>Shrimad Rajchandra Vachnamrutji</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=Jost:wght@300;400&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
@@ -59,6 +59,10 @@ td{padding:12px 10px 12px 0;border-bottom:1px solid var(--line)}
 .tw{overflow-x:auto}
 @media(max-width:800px){#lib{grid-template-columns:1fr;gap:32px;padding-top:32px}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+body.home{background:linear-gradient(rgba(18,20,43,.6),rgba(18,20,43,.9)),url(Cover.jpg) center/cover fixed no-repeat}
+body.home header{border-color:transparent}
+#authForm{padding:32px;max-width:360px;background:rgba(18,20,43,.55);backdrop-filter:blur(8px);border:1px solid var(--line)}
+#auth h1{text-shadow:0 2px 24px rgba(0,0,0,.5)}
 </style>
 </head>
 <body>
@@ -140,7 +144,7 @@ let signup = false, me = {}, chapters = [], current = null, audioFile = null, im
 
 $('brand').textContent = $('bookTitle').textContent = document.title = BOOK.title;
 $('bookTag').textContent = BOOK.tagline;
-const show = v => ['auth', 'lib', 'admin'].forEach(s => $(s).classList.toggle('hidden', s !== v));
+const show = v => { document.body.classList.toggle('home', v === 'auth'); ['auth', 'lib', 'admin'].forEach(s => $(s).classList.toggle('hidden', s !== v)); };
 
 /* ---------- auth ---------- */
 $('toggle').onclick = () => {
