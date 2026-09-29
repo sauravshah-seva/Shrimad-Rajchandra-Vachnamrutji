@@ -5,26 +5,26 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Shrimad Rajchandra Vachnamrutji</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=Jost:wght@300;400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=Jost:wght@300;400&family=Noto+Sans+Gujarati:wght@300;400&family=Noto+Serif+Gujarati:wght@300;400&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <style>
 :root{--bg:#fff;--panel:#f7f5f0;--ink:#1c1e3a;--mute:#6b6e8a;--gold:#a6853c;--line:rgba(166,133,60,.3)}
 *{box-sizing:border-box;margin:0}
-body{background:#fff;color:var(--ink);font:300 16px/1.7 Jost,sans-serif;min-height:100vh}
-h1,h2,h3{font-family:'Cormorant Garamond',serif;font-weight:300;letter-spacing:.02em}
+body{background:#fff;color:var(--ink);font:300 16px/1.7 Jost,'Noto Sans Gujarati',sans-serif;min-height:100vh}
+h1,h2,h3{font-family:'Cormorant Garamond','Noto Serif Gujarati',serif;font-weight:300;letter-spacing:.02em}
 button,input,select{font:inherit;color:inherit}
 select{background:var(--panel);border:0;border-bottom:1px solid var(--line);padding:10px 2px}
 :focus-visible{outline:1px solid var(--gold);outline-offset:3px}
 .hidden{display:none!important}
 .wrap{max-width:1100px;margin:0 auto;padding:0 24px}
 header{display:flex;justify-content:space-between;align-items:center;padding:28px 0;border-bottom:1px solid var(--line)}
-.brand{font:300 1.5rem 'Cormorant Garamond',serif;letter-spacing:.08em}
+.brand{font:300 1.5rem 'Cormorant Garamond','Noto Serif Gujarati',serif;letter-spacing:.08em}
 nav{display:flex;gap:22px;color:var(--mute);font-size:.9rem}
 .link{background:none;border:0;cursor:pointer;color:var(--mute);border-bottom:1px solid transparent;padding:0}
 .link:hover,.link[aria-current=true]{color:var(--gold);border-color:var(--gold)}
 #auth{min-height:80vh;display:grid;place-items:center;text-align:center}
 #auth h1{font-size:clamp(2.6rem,7vw,4.8rem);line-height:1.1;margin-bottom:12px}
-.sub{color:var(--mute);max-width:36ch;margin:0 auto 40px;font:italic 1.3rem 'Cormorant Garamond',serif}
+.sub{color:var(--mute);max-width:36ch;margin:0 auto 40px;font:italic 1.3rem 'Cormorant Garamond','Noto Serif Gujarati',serif}
 form{display:grid;gap:18px;max-width:320px;margin:0 auto;text-align:left}
 input[type=email],input[type=password],input[type=text]{background:none;border:0;border-bottom:1px solid var(--line);padding:10px 2px;width:100%}
 input::placeholder{color:#6d7091}
@@ -34,7 +34,7 @@ input::placeholder{color:#6d7091}
 #lib{display:grid;grid-template-columns:300px 1fr;gap:64px;padding:56px 0 120px}
 #toc h2{font-size:1.9rem;margin-bottom:24px}
 #toc ol{list-style:none;padding:0}
-#toc li button{display:block;width:100%;text-align:left;background:none;border:0;border-left:1px solid var(--line);padding:12px 18px;color:var(--mute);cursor:pointer;font:1.2rem 'Cormorant Garamond',serif;transition:.3s}
+#toc li button{display:block;width:100%;text-align:left;background:none;border:0;border-left:1px solid var(--line);padding:12px 18px;color:var(--mute);cursor:pointer;font:1.2rem 'Cormorant Garamond','Noto Serif Gujarati',serif;transition:.3s}
 #toc li button:hover{color:var(--ink)}
 #toc li button[aria-current=true]{border-left-color:var(--gold);color:var(--ink);padding-left:26px}
 #reader h2{font-size:clamp(2rem,4vw,3rem);margin-bottom:24px}
@@ -42,7 +42,7 @@ input::placeholder{color:#6d7091}
 audio{width:100%;height:40px}
 .pages{display:grid;gap:36px}
 .pages img{width:100%;border:1px solid var(--line);box-shadow:0 30px 60px -30px rgba(28,30,58,.35);background:var(--panel);min-height:200px}
-.empty{color:var(--mute);font:italic 1.3rem 'Cormorant Garamond',serif}
+.empty{color:var(--mute);font:italic 1.3rem 'Cormorant Garamond','Noto Serif Gujarati',serif}
 #admin{padding:48px 0 120px}
 #admin h2{font-size:2.2rem;margin-bottom:8px}
 .bar{height:2px;background:var(--line);margin:14px 0 36px;max-width:420px}.bar i{display:block;height:100%;background:var(--gold)}
@@ -77,17 +77,24 @@ body.home #bookTitle,body.home #bookTag,body.home .brand{display:none}
 #toc li button{padding-left:calc(18px + (var(--d,1) - 1)*20px)}
 #toc li button[aria-current=true]{padding-left:calc(26px + (var(--d,1) - 1)*20px)}
 #toc li button[data-d="2"]{font-size:1.05rem}#toc li button[data-d="3"]{font-size:.95rem}
+header .right{display:flex;gap:22px;align-items:center;margin-left:auto}
+#lang{background:none;border:1px solid var(--line);border-radius:6px;padding:4px 8px;color:var(--mute);font-size:.9rem;cursor:pointer}
+#lang option{color:#1c1e3a;background:#fff}
+body.home #lang{color:#fff;border-color:rgba(255,255,255,.55);background:rgba(255,255,255,.14);backdrop-filter:blur(10px)}
 </style>
 </head>
 <body>
 <div class="wrap">
 <header>
   <div class="brand" id="brand"></div>
-  <nav id="nav" class="hidden">
-    <button class="link" id="goLib">Library</button>
-    <button class="link hidden" id="goAdmin">Admin</button>
-    <button class="link" id="out">Sign out</button>
-  </nav>
+  <div class="right">
+    <select id="lang" aria-label="Language"><option value="en">English</option><option value="gu">ગુજરાતી</option></select>
+    <nav id="nav" class="hidden">
+      <button class="link" id="goLib" data-i="library">Library</button>
+      <button class="link hidden" id="goAdmin" data-i="admin">Admin</button>
+      <button class="link" id="out" data-i="out">Sign out</button>
+    </nav>
+  </div>
 </header>
 
 <section id="auth">
@@ -95,9 +102,9 @@ body.home #bookTitle,body.home #bookTag,body.home .brand{display:none}
     <h1 id="bookTitle"></h1>
     <p class="sub" id="bookTag"></p>
     <form id="authForm">
-      <input type="text" id="nm" placeholder="Your name" class="hidden" autocomplete="name">
-      <input type="email" id="em" placeholder="Email" required autocomplete="email">
-      <input type="password" id="pw" placeholder="Password (6+ characters)" required minlength="6" autocomplete="current-password">
+      <input type="text" id="nm" placeholder="Your name" data-p="name" class="hidden" autocomplete="name">
+      <input type="email" id="em" placeholder="Email" data-p="email" required autocomplete="email">
+      <input type="password" id="pw" placeholder="Password (6+ characters)" data-p="pass" required minlength="6" autocomplete="current-password">
       <button class="btn" id="authBtn">Sign in</button>
       <button type="button" class="link" id="toggle">New here? Create an account</button>
       <div class="msg" id="authMsg" role="status"></div>
@@ -106,8 +113,8 @@ body.home #bookTitle,body.home #bookTag,body.home .brand{display:none}
 </section>
 
 <section id="lib" class="hidden">
-  <aside id="toc"><h2>Contents</h2><ol id="chapters"></ol></aside>
-  <main id="reader"><p class="empty">Choose a chapter to begin.</p></main>
+  <aside id="toc"><h2 data-i="contents">Contents</h2><ol id="chapters"></ol></aside>
+  <main id="reader"><p class="empty" data-i="choose">Choose a chapter to begin.</p></main>
 </section>
 
 <section id="admin" class="hidden">
@@ -159,14 +166,36 @@ let signup = false, me = {}, chapters = [], current = null, audioFile = null, im
 
 $('brand').textContent = $('bookTitle').textContent = document.title = BOOK.title;
 $('bookTag').textContent = BOOK.tagline;
+const T = {
+  en: { library: 'Library', admin: 'Admin', out: 'Sign out', contents: 'Contents', choose: 'Choose a chapter to begin.',
+    name: 'Your name', email: 'Email', pass: 'Password (6+ characters)', signin: 'Sign in', create: 'Create account',
+    'new': 'New here? Create an account', have: 'Already registered? Sign in',
+    check: 'Check your email to confirm, then sign in.', paused: 'Your access is paused. Please contact the administrator.',
+    empty: 'Chapters will appear here.', pickSub: 'Choose a sub-section from the contents.' },
+  gu: { library: 'પુસ્તકાલય', admin: 'વ્યવસ્થાપક', out: 'બહાર નીકળો', contents: 'અનુક્રમણિકા', choose: 'શરૂ કરવા માટે પ્રકરણ પસંદ કરો.',
+    name: 'તમારું નામ', email: 'ઈમેલ', pass: 'પાસવર્ડ (ઓછામાં ઓછા ૬ અક્ષર)', signin: 'પ્રવેશ કરો', create: 'ખાતું બનાવો',
+    'new': 'નવા છો? ખાતું બનાવો', have: 'પહેલેથી ખાતું છે? પ્રવેશ કરો',
+    check: 'પુષ્ટિ કરવા માટે તમારો ઈમેલ તપાસો, પછી પ્રવેશ કરો.', paused: 'તમારો પ્રવેશ હાલ સ્થગિત છે. કૃપા કરીને વ્યવસ્થાપકનો સંપર્ક કરો.',
+    empty: 'પ્રકરણો અહીં દેખાશે.', pickSub: 'અનુક્રમણિકામાંથી પેટા-વિભાગ પસંદ કરો.' }
+};
+let lang = 'en'; try { lang = localStorage.getItem('lang') || 'en'; } catch (e) {}
+const t = k => (T[lang] && T[lang][k]) || T.en[k];
+function applyLang() {
+  document.documentElement.lang = lang; $('lang').value = lang;
+  document.querySelectorAll('[data-i]').forEach(e => e.textContent = t(e.dataset.i));
+  document.querySelectorAll('[data-p]').forEach(e => e.placeholder = t(e.dataset.p));
+  $('authBtn').textContent = t(signup ? 'create' : 'signin');
+  $('toggle').textContent = t(signup ? 'have' : 'new');
+}
+$('lang').onchange = () => { lang = $('lang').value; try { localStorage.setItem('lang', lang); } catch (e) {} applyLang(); renderToc(); };
+applyLang();
 const show = v => { document.body.classList.toggle('home', v === 'auth'); ['auth', 'lib', 'admin'].forEach(s => $(s).classList.toggle('hidden', s !== v)); };
 
 /* ---------- auth ---------- */
 $('toggle').onclick = () => {
   signup = !signup;
   $('nm').classList.toggle('hidden', !signup);
-  $('authBtn').textContent = signup ? 'Create account' : 'Sign in';
-  $('toggle').textContent = signup ? 'Already registered? Sign in' : 'New here? Create an account';
+  applyLang();
   $('authMsg').textContent = '';
 };
 $('authForm').onsubmit = async e => {
@@ -175,7 +204,7 @@ $('authForm').onsubmit = async e => {
   if (signup) c.options = { data: { full_name: $('nm').value }, emailRedirectTo: window.location.origin };
   const { data, error } = signup ? await sb.auth.signUp(c) : await sb.auth.signInWithPassword(c);
   if (error) return $('authMsg').textContent = error.message;
-  if (signup && !data.session) $('authMsg').textContent = 'Check your email to confirm, then sign in.';
+  if (signup && !data.session) $('authMsg').textContent = t('check');
 };
 $('out').onclick = () => sb.auth.signOut();
 $('goLib').onclick = () => { show('lib'); loadChapters(); };
@@ -190,7 +219,7 @@ sb.auth.onAuthStateChange(async (_e, s) => {
     me = data || {};
     $('goAdmin').classList.toggle('hidden', !me.is_admin);
     show('lib');
-    if (!me.approved && !me.is_admin) $('reader').innerHTML = '<p class="empty">Your access is paused. Please contact the administrator.</p>';
+    if (!me.approved && !me.is_admin) $('reader').replaceChildren(h('p', { className: 'empty', textContent: t('paused') }));
     else loadChapters();
   });
 });
@@ -222,7 +251,7 @@ function renderToc() {
     if (expanded.has(ch.id)) walk(ch.id, d + 1);
   });
   walk(null, 1);
-  if (!chapters.length) ol.append(h('li', { className: 'empty', textContent: 'Chapters will appear here.' }));
+  if (!chapters.length) ol.append(h('li', { className: 'empty', textContent: t('empty') }));
 }
 
 async function openChapter(ch) {
@@ -238,7 +267,7 @@ async function openChapter(ch) {
     const { data: u } = await sb.storage.from(B).createSignedUrls(pgs.map(p => p.image_path), 7200);
     (u || []).forEach((x, i) => box.append(h('img', { alt: `${ch.title}, page ${i + 1}`, loading: 'lazy', src: x.signedUrl })));
   }
-  $('reader').replaceChildren(h('h2', { textContent: ch.title }), a ? h('div', { className: 'player' }, au) : '', box, !a && !(pgs && pgs.length) ? h('p', { className: 'empty', textContent: 'Choose a sub-section from the contents.' }) : '');
+  $('reader').replaceChildren(h('h2', { textContent: ch.title }), a ? h('div', { className: 'player' }, au) : '', box, !a && !(pgs && pgs.length) ? h('p', { className: 'empty', textContent: t('pickSub') }) : '');
   window.scrollTo({ top: 0 });
 }
 
