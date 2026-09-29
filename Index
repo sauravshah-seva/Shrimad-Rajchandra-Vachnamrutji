@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sacred Pages</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=Jost:wght@300;400&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+:root{--bg:#12142b;--panel:#191c3a;--ink:#f3eee3;--mute:#9a9db8;--gold:#c2a566;--line:rgba(194,165,102,.25)}
+*{box-sizing:border-box;margin:0}
+body{background:radial-gradient(ellipse at 50% -10%,#232855 0,var(--bg) 60%) fixed;color:var(--ink);font:300 16px/1.7 Jost,sans-serif;min-height:100vh}
+h1,h2,h3{font-family:'Cormorant Garamond',serif;font-weight:300;letter-spacing:.02em}
+button,input,select{font:inherit;color:inherit}
+select{background:var(--panel);border:0;border-bottom:1px solid var(--line);padding:10px 2px}
+:focus-visible{outline:1px solid var(--gold);outline-offset:3px}
+.hidden{display:none!important}
+.wrap{max-width:1100px;margin:0 auto;padding:0 24px}
+header{display:flex;justify-content:space-between;align-items:center;padding:28px 0;border-bottom:1px solid var(--line)}
+.brand{font:300 1.5rem 'Cormorant Garamond',serif;letter-spacing:.08em}
+nav{display:flex;gap:22px;color:var(--mute);font-size:.9rem}
+.link{background:none;border:0;cursor:pointer;color:var(--mute);border-bottom:1px solid transparent;padding:0}
+.link:hover,.link[aria-current=true]{color:var(--gold);border-color:var(--gold)}
+#auth{min-height:80vh;display:grid;place-items:center;text-align:center}
+#auth h1{font-size:clamp(2.6rem,7vw,4.8rem);line-height:1.1;margin-bottom:12px}
+.sub{color:var(--mute);max-width:36ch;margin:0 auto 40px;font:italic 1.3rem 'Cormorant Garamond',serif}
+form{display:grid;gap:18px;max-width:320px;margin:0 auto;text-align:left}
+input[type=email],input[type=password],input[type=text]{background:none;border:0;border-bottom:1px solid var(--line);padding:10px 2px;width:100%}
+input::placeholder{color:#6d7091}
+.btn{background:none;border:1px solid var(--gold);color:var(--gold);padding:12px 28px;cursor:pointer;letter-spacing:.12em;transition:.3s}
+.btn:hover{background:var(--gold);color:var(--bg)}
+.msg{min-height:1.5em;font-size:.9rem;color:var(--gold)}
+#lib{display:grid;grid-template-columns:300px 1fr;gap:64px;padding:56px 0 120px}
+#toc h2{font-size:1.9rem;margin-bottom:24px}
+#toc ol{list-style:none;padding:0}
+#toc li button{display:block;width:100%;text-align:left;background:none;border:0;border-left:1px solid var(--line);padding:12px 18px;color:var(--mute);cursor:pointer;font:1.2rem 'Cormorant Garamond',serif;transition:.3s}
+#toc li button:hover{color:var(--ink)}
+#toc li button[aria-current=true]{border-left-color:var(--gold);color:var(--ink);padding-left:26px}
+#reader h2{font-size:clamp(2rem,4vw,3rem);margin-bottom:24px}
+.player{position:sticky;top:0;z-index:5;background:linear-gradient(var(--bg) 75%,transparent);padding:14px 0 26px}
+audio{width:100%;height:40px;filter:sepia(.4) hue-rotate(190deg) saturate(.6)}
+.pages{display:grid;gap:36px}
+.pages img{width:100%;border:1px solid var(--line);box-shadow:0 30px 60px -30px #000;background:var(--panel);min-height:200px}
+.empty{color:var(--mute);font:italic 1.3rem 'Cormorant Garamond',serif}
+#admin{padding:48px 0 120px}
+#admin h2{font-size:2.2rem;margin-bottom:8px}
+.bar{height:2px;background:var(--line);margin:14px 0 36px;max-width:420px}.bar i{display:block;height:100%;background:var(--gold)}
+.tabs{display:flex;gap:28px;margin-bottom:36px;border-bottom:1px solid var(--line);padding-bottom:12px}
+.pane{max-width:640px}.pane.wide{max-width:none}
+label{display:grid;gap:6px;color:var(--mute);font-size:.9rem}
+.drop{border:1px dashed var(--line);padding:22px;text-align:center;color:var(--mute);cursor:pointer;transition:.3s}
+.drop.over,.drop:hover{border-color:var(--gold);color:var(--ink)}
+.row{display:grid;grid-template-columns:60px 1fr auto auto;gap:14px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+table{width:100%;border-collapse:collapse;font-size:.92rem}
+th{text-align:left;color:var(--mute);font-weight:300;padding:8px 10px 8px 0;border-bottom:1px solid var(--line)}
+td{padding:12px 10px 12px 0;border-bottom:1px solid var(--line)}
+.tag{color:var(--gold)}
+.tw{overflow-x:auto}
+@media(max-width:800px){#lib{grid-template-columns:1fr;gap:32px;padding-top:32px}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="brand" id="brand"></div>
+  <nav id="nav" class="hidden">
+    <button class="link" id="goLib">Library</button>
+    <button class="link hidden" id="goAdmin">Admin</button>
+    <button class="link" id="out">Sign out</button>
+  </nav>
+</header>
+
+<section id="auth">
+  <div>
+    <h1 id="bookTitle"></h1>
+    <p class="sub" id="bookTag"></p>
+    <form id="authForm">
+      <input type="text" id="nm" placeholder="Your name" class="hidden" autocomplete="name">
+      <input type="email" id="em" placeholder="Email" required autocomplete="email">
+      <input type="password" id="pw" placeholder="Password (6+ characters)" required minlength="6" autocomplete="current-password">
+      <button class="btn" id="authBtn">Sign in</button>
+      <button type="button" class="link" id="toggle">New here? Create an account</button>
+      <div class="msg" id="authMsg" role="status"></div>
+    </form>
+  </div>
+</section>
+
+<section id="lib" class="hidden">
+  <aside id="toc"><h2>Contents</h2><ol id="chapters"></ol></aside>
+  <main id="reader"><p class="empty">Choose a chapter to begin.</p></main>
+</section>
+
+<section id="admin" class="hidden">
+  <h2>Administration</h2>
+  <div id="stats" class="empty"></div>
+  <div class="bar"><i id="barfill" style="width:0"></i></div>
+  <div class="tabs" id="tabs">
+    <button class="link" data-t="up">Upload</button>
+    <button class="link" data-t="ch">Chapters</button>
+    <button class="link" data-t="mem">Members</button>
+  </div>
+
+  <div class="pane" id="p-up">
+    <form id="upForm" style="max-width:none">
+      <label>Add to<select id="target"></select></label>
+      <label id="titleL">Chapter title<input type="text" id="cTitle"></label>
+      <label id="posL">Position in contents (1 is first)<input type="text" id="cPos" inputmode="numeric"></label>
+      <div class="drop" id="dropA" tabindex="0">Drop an audio file here, or click to choose<br><small id="aName"></small></div>
+      <div class="drop" id="dropI" tabindex="0">Drop page images here, or click to choose<br><small id="iName"></small></div>
+      <input type="file" id="fA" accept="audio/*" class="hidden">
+      <input type="file" id="fI" accept="image/*" multiple class="hidden">
+      <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="cmp" checked>Shrink images before upload (saves storage)</label>
+      <button class="btn">Upload</button>
+      <div class="bar" style="max-width:none;margin:0"><i id="upbar" style="width:0"></i></div>
+      <div class="msg" id="upMsg" role="status"></div>
+    </form>
+  </div>
+  <div class="pane hidden" id="p-ch"><div id="rows"></div></div>
+  <div class="pane wide hidden" id="p-mem"><div class="tw"><table><thead><tr><th>Name</th><th>Email</th><th>Joined</th><th>Last seen</th><th>Access</th><th>Role</th></tr></thead><tbody id="mrows"></tbody></table></div></div>
+</div>
+</section>
+</div>
+
+<script>
+/* ====== EDIT THESE ====== */
+const SUPABASE_URL = 'https://lpowlcdawtpdttmahxaw.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxwb3dsY2Rhd3RwZHR0bWFoeGF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA2MzgyOTAsImV4cCI6MjEwNjIxNDI5MH0.E5zXL0RL9cljYUBEslPXKxyuU5buKbC30pxWNltTiUs';
+const BOOK = { title: 'Shrimad Rajchandra Vachnamrutji', tagline: “જેણે આત્મા જાણ્યો તેણે સર્વ જાણ્યું.”' };
+const QUOTA_MB = 1024; /* Supabase free storage */
+/* ======================== */
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const $ = id => document.getElementById(id);
+const h = (t, p = {}, ...k) => { const e = Object.assign(document.createElement(t), p); e.append(...k); return e; };
+const B = 'book', safe = n => n.replace(/[^a-zA-Z0-9._-]/g, '_');
+const fmt = d => d ? new Date(d).toLocaleDateString() : '-';
+let signup = false, me = {}, chapters = [], current = null, audioFile = null, imgFiles = [];
+
+$('brand').textContent = $('bookTitle').textContent = document.title = BOOK.title;
+$('bookTag').textContent = BOOK.tagline;
+const show = v => ['auth', 'lib', 'admin'].forEach(s => $(s).classList.toggle('hidden', s !== v));
+
+/* ---------- auth ---------- */
+$('toggle').onclick = () => {
+  signup = !signup;
+  $('nm').classList.toggle('hidden', !signup);
+  $('authBtn').textContent = signup ? 'Create account' : 'Sign in';
+  $('toggle').textContent = signup ? 'Already registered? Sign in' : 'New here? Create an account';
+  $('authMsg').textContent = '';
+};
+$('authForm').onsubmit = async e => {
+  e.preventDefault();
+  const c = { email: $('em').value, password: $('pw').value };
+  if (signup) c.options = { data: { full_name: $('nm').value } };
+  const { data, error } = signup ? await sb.auth.signUp(c) : await sb.auth.signInWithPassword(c);
+  if (error) return $('authMsg').textContent = error.message;
+  if (signup && !data.session) $('authMsg').textContent = 'Check your email to confirm, then sign in.';
+};
+$('out').onclick = () => sb.auth.signOut();
+$('goLib').onclick = () => { show('lib'); loadChapters(); };
+$('goAdmin').onclick = () => { show('admin'); tab('up'); loadChapters(); loadStats(); };
+
+sb.auth.onAuthStateChange(async (_e, s) => {
+  $('nav').classList.toggle('hidden', !s);
+  if (!s) { me = {}; return show('auth'); }
+  setTimeout(async () => {
+    sb.rpc('touch_me');
+    const { data } = await sb.from('profiles').select('*').eq('id', s.user.id).single();
+    me = data || {};
+    $('goAdmin').classList.toggle('hidden', !me.is_admin);
+    show('lib');
+    if (!me.approved && !me.is_admin) $('reader').innerHTML = '<p class="empty">Your access is paused. Please contact the administrator.</p>';
+    else loadChapters();
+  });
+});
+
+/* ---------- reader ---------- */
+async function loadChapters() {
+  const { data } = await sb.from('chapters').select('*').order('position');
+  chapters = data || [];
+  const ol = $('chapters'); ol.innerHTML = '';
+  chapters.forEach(ch => {
+    const b = h('button', { textContent: ch.title, onclick: () => openChapter(ch) });
+    b.dataset.id = ch.id; b.setAttribute('aria-current', current === ch.id);
+    ol.append(h('li', {}, b));
+  });
+  if (!chapters.length) ol.append(h('li', { className: 'empty', textContent: 'Chapters will appear here.' }));
+  if (me.is_admin) { renderTarget(); renderRows(); }
+}
+
+async function openChapter(ch) {
+  current = ch.id;
+  document.querySelectorAll('#chapters button').forEach(b => b.setAttribute('aria-current', b.dataset.id == ch.id));
+  const [{ data: a }, { data: pgs }] = await Promise.all([
+    sb.storage.from(B).createSignedUrl(ch.audio_path, 7200),
+    sb.from('pages').select('*').eq('chapter_id', ch.id).order('position')
+  ]);
+  const au = h('audio', { controls: true, preload: 'metadata' }); if (a) au.src = a.signedUrl;
+  const box = h('div', { className: 'pages' });
+  if (pgs && pgs.length) {
+    const { data: u } = await sb.storage.from(B).createSignedUrls(pgs.map(p => p.image_path), 7200);
+    (u || []).forEach((x, i) => box.append(h('img', { alt: `${ch.title}, page ${i + 1}`, loading: 'lazy', src: x.signedUrl })));
+  }
+  $('reader').replaceChildren(h('h2', { textContent: ch.title }), h('div', { className: 'player' }, au), box);
+  window.scrollTo({ top: 0 });
+}
+
+/* ---------- admin: tabs & stats ---------- */
+function tab(t) {
+  ['up', 'ch', 'mem'].forEach(x => $('p-' + x).classList.toggle('hidden', x !== t));
+  document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-current', b.dataset.t === t));
+  if (t === 'mem') loadMembers();
+}
+$('tabs').onclick = e => e.target.dataset.t && tab(e.target.dataset.t);
+
+async function loadStats() {
+  const [{ count: m }, { data: bytes }, { count: p }] = await Promise.all([
+    sb.from('profiles').select('*', { count: 'exact', head: true }),
+    sb.rpc('storage_used'),
+    sb.from('pages').select('*', { count: 'exact', head: true })
+  ]);
+  const mb = (bytes || 0) / 1048576;
+  $('stats').textContent = `${chapters.length} chapters, ${p || 0} pages, ${m || 0} members. ${mb.toFixed(0)} MB of ${QUOTA_MB} MB storage used.`;
+  $('barfill').style.width = Math.min(100, mb / QUOTA_MB * 100) + '%';
+}
+
+/* ---------- admin: upload ---------- */
+function renderTarget() {
+  const t = $('target'), v = t.value;
+  t.replaceChildren(h('option', { value: '', textContent: 'A new chapter' }),
+    ...chapters.map(c => h('option', { value: c.id, textContent: 'Chapter: ' + c.title })));
+  t.value = v;
+  syncTarget();
+}
+function syncTarget() { const n = !$('target').value; $('titleL').classList.toggle('hidden', !n); $('posL').classList.toggle('hidden', !n); }
+$('target').onchange = syncTarget;
+
+function wireDrop(zone, input, onFiles) {
+  zone.onclick = () => input.click();
+  zone.onkeydown = e => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), input.click());
+  zone.ondragover = e => { e.preventDefault(); zone.classList.add('over'); };
+  zone.ondragleave = () => zone.classList.remove('over');
+  zone.ondrop = e => { e.preventDefault(); zone.classList.remove('over'); onFiles([...e.dataTransfer.files]); };
+  input.onchange = () => onFiles([...input.files]);
+}
+wireDrop($('dropA'), $('fA'), f => { audioFile = f.find(x => x.type.startsWith('audio/')) || null; $('aName').textContent = audioFile ? audioFile.name : ''; });
+wireDrop($('dropI'), $('fI'), f => {
+  imgFiles = f.filter(x => x.type.startsWith('image/')).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+  $('iName').textContent = imgFiles.length ? imgFiles.length + ' images selected' : '';
+});
+
+async function shrink(f) {
+  if (!$('cmp').checked) return { blob: f, name: safe(f.name) };
+  const bm = await createImageBitmap(f), s = Math.min(1, 1600 / bm.width), c = document.createElement('canvas');
+  c.width = Math.round(bm.width * s); c.height = Math.round(bm.height * s);
+  c.getContext('2d').drawImage(bm, 0, 0, c.width, c.height);
+  const blob = await new Promise(r => c.toBlob(r, 'image/webp', .82));
+  return blob ? { blob, name: safe(f.name).replace(/\.[^.]+$/, '') + '.webp' } : { blob: f, name: safe(f.name) };
+}
+
+$('upForm').onsubmit = async e => {
+  e.preventDefault();
+  const m = $('upMsg'), tid = $('target').value, total = imgFiles.length + (audioFile ? 1 : 0);
+  let done = 0; const tick = () => $('upbar').style.width = (++done / total * 100) + '%';
+  try {
+    if (!total) throw new Error('Choose an audio file or page images.');
+    let ch = chapters.find(c => c.id == tid), folder, up = async (p, f, o) => { const r = await sb.storage.from(B).upload(p, f, o); if (r.error) throw r.error; };
+    if (!ch) {
+      if (!audioFile || !$('cTitle').value || !$('cPos').value) throw new Error('A new chapter needs a title, position and audio file.');
+      folder = crypto.randomUUID(); m.textContent = 'Uploading audio...';
+      const ap = `${folder}/audio-${safe(audioFile.name)}`; await up(ap, audioFile); tick();
+      const r = await sb.from('chapters').insert({ title: $('cTitle').value, position: +$('cPos').value, audio_path: ap }).select().single();
+      if (r.error) throw r.error; ch = r.data;
+    } else {
+      folder = ch.audio_path.split('/')[0];
+      if (audioFile) {
+        m.textContent = 'Replacing audio...';
+        const ap = `${folder}/audio-${Date.now()}-${safe(audioFile.name)}`; await up(ap, audioFile);
+        await sb.from('chapters').update({ audio_path: ap }).eq('id', ch.id);
+        await sb.storage.from(B).remove([ch.audio_path]); tick();
+      }
+    }
+    const { data: last } = await sb.from('pages').select('position').eq('chapter_id', ch.id).order('position', { ascending: false }).limit(1);
+    let n = last && last.length ? last[0].position : 0; const rows = [];
+    for (const f of imgFiles) {
+      m.textContent = `Uploading page ${rows.length + 1} of ${imgFiles.length}...`;
+      const { blob, name } = await shrink(f); n++;
+      const p = `${folder}/p${String(n).padStart(3, '0')}-${Date.now()}-${name}`;
+      await up(p, blob, { contentType: blob.type }); tick();
+      rows.push({ chapter_id: ch.id, position: n, image_path: p });
+    }
+    if (rows.length) { const r = await sb.from('pages').insert(rows); if (r.error) throw r.error; }
+    m.textContent = 'Upload complete.'; e.target.reset(); audioFile = null; imgFiles = [];
+    $('aName').textContent = $('iName').textContent = ''; $('upbar').style.width = 0;
+    await loadChapters(); loadStats();
+  } catch (err) { m.textContent = 'Upload failed: ' + err.message; }
+};
+
+/* ---------- admin: chapters ---------- */
+function renderRows() {
+  $('rows').replaceChildren(...chapters.map(ch => {
+    const pos = h('input', { type: 'text', value: ch.position, inputMode: 'numeric', ariaLabel: 'Position' });
+    const ti = h('input', { type: 'text', value: ch.title, ariaLabel: 'Title' });
+    const save = h('button', { className: 'link', textContent: 'Save', onclick: async () => {
+      await sb.from('chapters').update({ title: ti.value, position: +pos.value }).eq('id', ch.id); loadChapters();
+    } });
+    const del = h('button', { className: 'link', textContent: 'Delete', onclick: async () => {
+      if (!confirm(`Delete "${ch.title}" and all its pages?`)) return;
+      const { data: pg } = await sb.from('pages').select('image_path').eq('chapter_id', ch.id);
+      await sb.storage.from(B).remove([ch.audio_path, ...(pg || []).map(p => p.image_path)]);
+      await sb.from('chapters').delete().eq('id', ch.id); await loadChapters(); loadStats();
+    } });
+    return h('div', { className: 'row' }, pos, ti, save, del);
+  }));
+}
+
+/* ---------- admin: members ---------- */
+async function loadMembers() {
+  const { data } = await sb.from('profiles').select('*').order('created_at', { ascending: false });
+  $('mrows').replaceChildren(...(data || []).map(u => {
+    const self = u.id === me.id;
+    const acc = h('button', { className: 'link', textContent: u.approved ? 'Active (pause)' : 'Paused (allow)', disabled: self,
+      onclick: async () => { await sb.from('profiles').update({ approved: !u.approved }).eq('id', u.id); loadMembers(); } });
+    const rol = h('button', { className: 'link', textContent: u.is_admin ? 'Admin (remove)' : 'Member (make admin)', disabled: self,
+      onclick: async () => { await sb.from('profiles').update({ is_admin: !u.is_admin }).eq('id', u.id); loadMembers(); } });
+    return h('tr', {}, h('td', { textContent: u.full_name || '-' }), h('td', { textContent: u.email }),
+      h('td', { textContent: fmt(u.created_at) }), h('td', { textContent: fmt(u.last_seen) }), h('td', {}, acc), h('td', {}, rol));
+  }));
+}
+</script>
+</body>
+</html>
