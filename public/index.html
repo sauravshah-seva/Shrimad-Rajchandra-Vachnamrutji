@@ -125,6 +125,10 @@ body.home #bookTitle,body.home #bookTag,body.home .brand{display:none}
 /* at rest: the cover is shown fully, with no dimming, tint or blur anywhere on it */
 body.home:not(.dim) #authForm{background:transparent;backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:none;border-color:rgba(255,255,255,.35)}
 body.home:not(.dim)::before{opacity:0}
+/* the cover is bright, so keep the white text readable while the window is see-through */
+body.home:not(.dim) #authForm input,body.home:not(.dim) #authForm .link,body.home:not(.dim) #authForm .msg{text-shadow:0 1px 3px rgba(0,0,0,.75),0 0 10px rgba(0,0,0,.45)}
+body.home:not(.dim) #authForm input{border-color:rgba(255,255,255,.7);background:rgba(0,0,0,.18)}
+body.home:not(.dim) #authForm input::placeholder{color:#fff}
 #authForm input{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.28);border-radius:6px;padding:8px 12px;font-size:.95rem}
 #authForm input::placeholder{color:rgba(255,255,255,.75)}
 #authForm input:focus{outline:0;border-color:#fff;background:rgba(255,255,255,.25)}
