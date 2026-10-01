@@ -52,7 +52,12 @@ audio{width:100%;height:40px}
 #bar .nowp{font:1.15rem Inter,'Noto Serif Gujarati',serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:30%}
 #bar audio{flex:1;min-width:0}
 #bar .tctl{display:flex;align-items:center;gap:6px;white-space:nowrap;color:var(--mute);font-size:.9rem}
-#bar .spd{flex:none;width:auto;min-width:3.2em;padding:4px 10px;font-size:.95rem;border:1px solid var(--line);border-radius:999px;text-align:center}
+#bar .spds{display:flex;gap:4px;flex:none}
+#bar .sp{font-size:.8rem;padding:3px 8px;border:1px solid var(--line);border-radius:999px;color:var(--mute);background:#fff;cursor:pointer;white-space:nowrap}
+#bar .sp.on{background:var(--gold);border-color:var(--gold);color:#fff}
+#bar .nextup{max-width:1100px;margin:0 auto 8px;display:flex;gap:16px;align-items:center;flex-wrap:wrap;font-size:.95rem}
+#bar .nextup b{font-weight:500}
+@media(max-width:800px){#bar .in{flex-wrap:wrap}#bar .in audio{flex:1 1 100%;order:5}}
 #bar .tbtn{font-size:1.6rem;line-height:1;padding:0 6px}
 #bar .tbtn:disabled{opacity:.3;cursor:default}
 @media(max-width:600px){#bar .nowp{display:none}}
@@ -307,7 +312,9 @@ const fmtT = s => {
   return (hh ? hh + ':' + String(mm).padStart(2, '0') : mm) + ':' + String(ss).padStart(2, '0');
 };
 
+let nextTimer = null;
 function stopBar() {
+  clearInterval(nextTimer);
   const bar = $('bar'), au = bar.querySelector('audio');
   if (au) au.pause();
   bar.replaceChildren(); bar.classList.add('hidden');
@@ -340,7 +347,31 @@ function renderToc() {
   if (!chapters.length) ol.append(h('li', { className: 'empty', textContent: t('empty') }));
 }
 
-async function openChapter(ch) {
+/* after the last track of a chapter: announce the next chapter, then continue unless the user presses Stop */
+function offerNext(ch, au) {
+  const order = []; const walk = pid => kids(pid).forEach(c => { order.push(c); walk(c.id); }); walk(null);
+  let nx = null;
+  for (let j = order.findIndex(c => c.id === ch.id) + 1; j > 0 && j < order.length; j++) if (tracksOf(order[j]).length) { nx = order[j]; break; }
+  const bar = $('bar'); const old = bar.querySelector('.nextup'); if (old) old.remove();
+  clearInterval(nextTimer);
+  if (!nx) { bar.prepend(h('div', { className: 'nextup' }, h('span', { textContent: 'That was the last chapter.' }))); return; }
+  let left = 5;
+  const msg = h('span');
+  const upd = () => { msg.replaceChildren('Next: ', h('b', { textContent: ttl(nx) }), ` \u2014 starting in ${left}s`); };
+  const go = () => {
+    clearInterval(nextTimer);
+    for (let p = chapters.find(c => c.id === nx.parent_id); p; p = chapters.find(c => c.id === p.parent_id)) expanded.add(p.id);
+    renderToc(); window.scrollTo({ top: 0, behavior: 'smooth' });
+    openChapter(nx, true);
+  };
+  const stop = h('button', { type: 'button', className: 'link', textContent: 'Stop', onclick: () => { clearInterval(nextTimer); row.remove(); } });
+  const now = h('button', { type: 'button', className: 'link', textContent: 'Play now', onclick: go });
+  const row = h('div', { className: 'nextup' }, msg, stop, now);
+  upd(); bar.prepend(row);
+  nextTimer = setInterval(() => { if (--left <= 0) go(); else upd(); }, 1000);
+}
+
+async function openChapter(ch, auto) {
   current = ch.id;
   document.querySelectorAll('#chapters button').forEach(b => b.setAttribute('aria-current', b.dataset.id == ch.id));
   const tr = tracksOf(ch);
@@ -388,16 +419,23 @@ async function openChapter(ch) {
       sync();
     };
     /* when a track finishes, continue with the next one */
-    au.addEventListener('ended', () => { if (ti < q.length - 1) setTrack(ti + 1, true); });
+    au.addEventListener('ended', () => { if (ti < q.length - 1) setTrack(ti + 1, true); else offerNext(ch, au); });
+    /* any new playback cancels the \"next chapter\" countdown */
+    au.addEventListener('play', () => { clearInterval(nextTimer); const n = $('bar').querySelector('.nextup'); if (n) n.remove(); });
 
     /* playback speed (remembered; defaultPlaybackRate keeps it when the track changes) */
     let saved = 1; try { saved = parseFloat(localStorage.getItem('speed')) || 1; } catch (e) {}
     if (![0.75, 1, 1.25, 1.5, 1.75, 2].includes(saved)) saved = 1;
     au.defaultPlaybackRate = au.playbackRate = saved;
     const SP = [0.75, 1, 1.25, 1.5, 1.75, 2];
-    const spd = h('button', { type: 'button', className: 'link spd', title: 'Playback speed (click to change)' });
-    const setSpd = v => { au.defaultPlaybackRate = au.playbackRate = v; spd.textContent = v + 'x'; spd.ariaLabel = 'Playback speed ' + v + 'x'; try { localStorage.setItem('speed', v); } catch (e) {} };
-    spd.onclick = () => setSpd(SP[(SP.indexOf(au.defaultPlaybackRate) + 1) % SP.length]);
+    const spd = h('span', { className: 'spds', role: 'group', ariaLabel: 'Playback speed' });
+    const spBtns = SP.map(v => h('button', { type: 'button', className: 'link sp', textContent: v + 'x', title: 'Speed ' + v + 'x', onclick: () => setSpd(v) }));
+    const setSpd = v => {
+      au.defaultPlaybackRate = au.playbackRate = v;
+      spBtns.forEach((b, k) => { b.setAttribute('aria-pressed', SP[k] === v); b.classList.toggle('on', SP[k] === v); });
+      try { localStorage.setItem('speed', v); } catch (e) {}
+    };
+    spd.append(...spBtns);
     setSpd(saved);
 
     $('bar').append(h('div', { className: 'in' }, h('span', { className: 'nowp', textContent: ttl(ch) }),
@@ -436,7 +474,7 @@ async function openChapter(ch) {
       };
       ['timeupdate', 'seeked', 'loadedmetadata'].forEach(ev => au.addEventListener(ev, () => sync()));
     }
-    setTrack(0, false);
+    setTrack(0, !!auto);
   }
 
   if (!timed && !playlist && list.length) {
