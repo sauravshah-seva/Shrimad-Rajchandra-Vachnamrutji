@@ -635,6 +635,23 @@ async function openTiming(ch, st) {
       loadTrack((+asel.value || 1) - 1, () => { au.currentTime = s; au.play(); });
     } });
 
+    const rem = h('button', { type: 'button', className: 'link act', textContent: 'Remove', title: 'Remove this page image',
+      ariaLabel: `Remove page ${i + 1}`,
+      onclick: async () => {
+        if (!confirm(`Remove page ${i + 1} and its image? Later pages move up by one.`)) return;
+        msg.textContent = 'Removing page...';
+        const d = capture(); d.splice(i, 1);
+        const r = await sb.from('pages').delete().eq('chapter_id', ch.id).eq('position', p.position);
+        if (r.error) return msg.textContent = 'Could not remove: ' + r.error.message;
+        if (p.image_path) await sb.storage.from(B).remove([p.image_path]);
+        for (const q of list.slice(i + 1)) {
+          const u2 = await sb.from('pages').update({ position: q.position - 1 }).eq('chapter_id', ch.id).eq('position', q.position);
+          if (u2.error) { msg.textContent = 'Renumbering failed: ' + u2.error.message; break; }
+        }
+        await loadChapters(); loadStats();
+        openTiming(chapters.find(c => c.id === ch.id) || ch, { draft: d, note: `Page ${i + 1} removed. Other unsaved edits are kept. Click "Save timings" to keep them.` });
+      } });
+
     /* under each page: the tracks that play for this page, one after the other */
     const chips = h('span', { className: 'chips c3' });
     const hint = h('span', { className: 'hint' });
@@ -661,7 +678,7 @@ async function openTiming(ch, st) {
     return { inp, tsel,
       row: h('div', { className: 'pgbox' }, thumb, h('span', { textContent: `Page ${i + 1}` }), tr.length ? tsel : h('span'), inp, now, go,
         h('span', { className: 'plabel', textContent: 'Page audio:' }), tr.length ? asel : h('span'), ainp, anow, ago,
-        h('span'), chips, tr.length ? pick : h('span'), upl, opts, hint) };
+        rem, chips, tr.length ? pick : h('span'), upl, opts, hint) };
   });
   renderAll();
   if (st && st.note) msg.textContent = st.note;
@@ -688,6 +705,30 @@ async function openTiming(ch, st) {
   } });
   const close = h('button', { type: 'button', className: 'link', textContent: 'Close', onclick: () => { au.pause(); box.classList.add('hidden'); box.replaceChildren(); } });
 
+  /* add page images to this chapter */
+  const imgIn = h('input', { type: 'file', accept: 'image/*', multiple: true, className: 'hidden' });
+  const addImgs = h('button', { type: 'button', className: 'link', textContent: '+ Add page images', onclick: () => imgIn.click() });
+  imgIn.onchange = async () => {
+    const files = [...imgIn.files].filter(x => x.type.startsWith('image/')).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+    imgIn.value = '';
+    if (!files.length) return;
+    try {
+      const d = capture();
+      const folder = list.length && list[0].image_path ? list[0].image_path.split('/')[0] : (tr.length ? tr[0].audio_path.split('/')[0] : 'node-' + ch.id);
+      let n = list.length ? Math.max(...list.map(x => x.position)) : 0; const rows = [];
+      for (const f of files) {
+        msg.textContent = `Uploading image ${rows.length + 1} of ${files.length}...`;
+        const { blob, name } = await shrink(f); n++;
+        const p = `${folder}/p${String(n).padStart(3, '0')}-${Date.now()}-${name}`;
+        const r = await sb.storage.from(B).upload(p, blob, { contentType: blob.type }); if (r.error) throw r.error;
+        rows.push({ chapter_id: ch.id, position: n, image_path: p });
+      }
+      const r = await sb.from('pages').insert(rows); if (r.error) throw r.error;
+      await loadChapters(); loadStats();
+      openTiming(chapters.find(c => c.id === ch.id) || ch, { draft: d, note: `Added ${rows.length} page(s) at the end.` });
+    } catch (err) { msg.textContent = 'Upload failed: ' + err.message; }
+  };
+
   /* undo the most recent upload */
   const last = tr[tr.length - 1];
   const removeLast = last ? h('button', { type: 'button', className: 'link', textContent: 'Remove last track', onclick: async () => {
@@ -713,8 +754,8 @@ async function openTiming(ch, st) {
     h('div', { className: 'note' }, ...(tr.length ? tr.map((x, i) => h('div', { textContent: `Track ${i + 1}: ${x.audio_path.split('/').pop().replace(/^audio-(\d+-)*/, '')}` })) : [h('div', { textContent: 'No audio uploaded yet.' })])),
     h('div', { className: 'prev' }, au, pvLab),
     modeNote,
-    ...(list.length ? inputs.map(x => x.row) : [h('p', { className: 'note', textContent: 'This chapter has no pages yet. Upload page images first.' })]),
-    h('div', { style: 'display:flex;gap:24px;align-items:center;flex-wrap:wrap' }, save, close, removeLast),
+    ...(list.length ? inputs.map(x => x.row) : [h('p', { className: 'note', textContent: 'This chapter has no pages yet. Use "+ Add page images" below.' })]),
+    h('div', { style: 'display:flex;gap:24px;align-items:center;flex-wrap:wrap' }, addImgs, imgIn, save, close, removeLast),
     msg
   );
 }
