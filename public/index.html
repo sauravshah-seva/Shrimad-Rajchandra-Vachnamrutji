@@ -79,6 +79,7 @@ td{padding:12px 10px 12px 0;border-bottom:1px solid var(--line)}
 #timing .prev{display:flex;gap:14px;align-items:center}
 .pgbox{display:grid;grid-template-columns:70px 70px 100px 110px 1fr 1fr;gap:10px 14px;align-items:center;border-bottom:1px solid var(--line);padding:12px 0}
 .pgbox .c3{grid-column:3/5}
+.pgbox .opts{grid-column:2/-1}
 .pgbox .hint{grid-column:2/-1;color:var(--gold);font-size:.85rem}
 .pgbox img{width:60px;height:80px;object-fit:cover;border:1px solid var(--line)}
 .pgbox .link{text-align:left;justify-self:start}
@@ -624,10 +625,10 @@ async function openTiming(ch, st) {
     /* under each page: the tracks that play for this page, one after the other */
     const chips = h('span', { className: 'chips c3' });
     const hint = h('span', { className: 'hint' });
-    const pick = h('select', { className: 'pickl', ariaLabel: `Add an uploaded track to page ${i + 1}` },
-      h('option', { value: '', textContent: '+ Pick an uploaded track' }),
-      ...tr.map((_, k) => h('option', { value: k + 1, textContent: 'Track ' + (k + 1) })));
-    pick.onchange = () => { if (pick.value) { lists[i].push(+pick.value); pick.value = ''; renderAll(); } };
+    const opts = h('span', { className: 'chips opts hidden' }, ...tr.map((_, k) => h('button', { type: 'button', className: 'link', textContent: 'Track ' + (k + 1),
+      onclick: () => { lists[i].push(k + 1); opts.classList.add('hidden'); renderAll(); } })));
+    const pick = h('button', { type: 'button', className: 'link', textContent: '+ Pick an uploaded track',
+      onclick: () => opts.classList.toggle('hidden') });
     const upl = h('button', { type: 'button', className: 'link', textContent: '+ Upload new track',
       title: 'Upload audio and add it to this page',
       onclick: () => {
@@ -646,7 +647,7 @@ async function openTiming(ch, st) {
     });
     return { inp, tsel,
       row: h('div', { className: 'pgbox' }, thumb, h('span', { textContent: `Page ${i + 1}` }), tr.length ? tsel : h('span'), inp, now, go,
-        h('span'), h('span', { textContent: 'Page audio:' }), chips, tr.length ? pick : h('span'), upl, hint) };
+        h('span'), h('span', { textContent: 'Page audio:' }), chips, tr.length ? pick : h('span'), upl, opts, hint) };
   });
   renderAll();
   if (st && st.note) msg.textContent = st.note;
