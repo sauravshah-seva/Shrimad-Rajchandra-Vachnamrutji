@@ -33,7 +33,7 @@ input::placeholder{color:#6d7091}
 .btn:hover{background:var(--gold);color:var(--bg)}
 .msg{min-height:1.5em;font-size:.9rem;color:var(--gold)}
 #lib{display:grid;grid-template-columns:300px 1fr;gap:64px;padding:56px 0 120px}
-body.hasbar #lib{padding-bottom:150px}
+body.hasbar #lib{padding-bottom:200px}
 #toc h2{font-size:1.9rem;margin-bottom:24px}
 #toc ol{list-style:none;padding:0}
 #toc li button{display:block;width:100%;text-align:left;background:none;border:0;border-left:1px solid var(--line);padding:12px 18px;color:var(--mute);cursor:pointer;font:1.2rem Inter,'Noto Serif Gujarati',serif;transition:.3s}
@@ -59,6 +59,16 @@ audio{width:100%;height:40px}
 #toc #bms li button.bmx{width:auto;flex:none;border-left:0;padding:12px 14px;font-size:1.1rem}
 #bar .bmk{flex:none;font-size:.85rem;padding:3px 10px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--mute);cursor:pointer;white-space:nowrap}
 #bar .bmk:hover{color:var(--gold);border-color:var(--gold)}
+#bar .mline{max-width:1100px;margin:6px auto 0;padding:0 2px}
+#bar .mline.hidden{display:none}
+#bar .rail{position:relative;height:38px;cursor:pointer}
+#bar .rail::before{content:'';position:absolute;left:0;right:0;top:6px;height:2px;background:var(--line);border-radius:2px}
+#bar .rail .head{position:absolute;top:2px;width:2px;height:10px;margin-left:-1px;background:var(--gold);left:0;pointer-events:none}
+#bar .rail .ms{position:absolute;top:0;transform:translateX(-50%);padding:14px 4px 0;border:0;background:none;cursor:pointer;font:400 .72rem Inter,sans-serif;color:var(--mute);line-height:1}
+#bar .rail .ms::before{content:'';position:absolute;left:50%;top:2px;width:2px;height:10px;margin-left:-1px;background:var(--ink);border-radius:1px}
+#bar .rail .ms.lo{top:12px}
+#bar .rail .ms:hover,#bar .rail .ms.on{color:var(--gold)}
+#bar .rail .ms:hover::before,#bar .rail .ms.on::before{background:var(--gold)}
 #bar .spds{display:flex;gap:4px;flex:none}
 #bar .sp{font-size:.8rem;padding:3px 8px;border:1px solid var(--line);border-radius:999px;color:var(--mute);background:#fff;cursor:pointer;white-space:nowrap}
 #bar .sp.on{background:var(--gold);border-color:var(--gold);color:#fff}
@@ -548,7 +558,7 @@ async function openChapter(ch, auto, resume) {
       lab.textContent = 'Track ' + (i + 1) + ' / ' + q.length;
       prev.disabled = i === 0; next.disabled = i === q.length - 1;
       if (play) au.play().catch(() => {});
-      sync();
+      sync(); drawMs();
     };
     /* when a track finishes, continue with the next one */
     au.addEventListener('ended', () => { if (ti < q.length - 1) setTrack(ti + 1, true); else offerNext(ch, au); });
@@ -576,14 +586,45 @@ async function openChapter(ch, auto, resume) {
         bmk.textContent = 'Saved \u2713'; setTimeout(() => { bmk.textContent = 'Bookmark'; }, 1800);
       } });
 
+    /* milestones: a strip under the player with the page numbers marked where each page starts on the current track */
+    const pn0 = (String(ch.page_no || '').match(/^\s*(\d+)/) || [])[1];
+    const pageNo = idx => (pn0 ? +pn0 : 1) + idx;     /* the chapter's typed page number is the first page; later pages follow on from it */
+    let getMarks = () => [];
+    const ms = h('div', { className: 'mline hidden' }), rail = h('div', { className: 'rail', ariaLabel: 'Page milestones on this track' }), head = h('i', { className: 'head' });
+    ms.append(rail);
+    const drawMs = () => {
+      const d = au.duration; if (!Number.isFinite(d) || d <= 0) return;
+      const items = getMarks().filter(m => m.t <= d).sort((a, b) => a.t - b.t);
+      ms.classList.toggle('hidden', !items.length);
+      let last = -99, lo = false;
+      rail.replaceChildren(head, ...items.map(m => {
+        const left = m.t / d * 100; lo = left - last < 4.5 ? !lo : false; last = left;
+        const b = h('button', { type: 'button', className: 'ms' + (lo ? ' lo' : ''), textContent: String(m.label), title: `Page ${m.label} \u00B7 ${fmtT(m.t)}`, ariaLabel: `Go to page ${m.label}`,
+          style: `left:${left}%`, onclick: e => { e.stopPropagation(); au.currentTime = m.t; au.play().catch(() => {}); } });
+        b.dataset.t = m.t; return b;
+      }));
+      moveHead();
+    };
+    const moveHead = () => {
+      const d = au.duration; if (!Number.isFinite(d) || d <= 0) return;
+      head.style.left = (au.currentTime / d * 100) + '%';
+      const bs = [...rail.querySelectorAll('.ms')]; let cur = null;
+      bs.forEach(b => { if (+b.dataset.t <= au.currentTime + 0.05) cur = b; });
+      bs.forEach(b => b.classList.toggle('on', b === cur));
+    };
+    ['loadedmetadata', 'durationchange'].forEach(ev => au.addEventListener(ev, drawMs));
+    au.addEventListener('timeupdate', moveHead);
+    rail.onclick = e => { const d = au.duration; if (!Number.isFinite(d)) return; const r = rail.getBoundingClientRect(); au.currentTime = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * d; };
+
     $('bar').append(h('div', { className: 'in' }, h('span', { className: 'nowp', textContent: ttl(ch) }),
-      multi ? h('span', { className: 'tctl' }, prev, lab, next) : '', au, spd, bmk));
+      multi ? h('span', { className: 'tctl' }, prev, lab, next) : '', au, spd, bmk), ms);
     $('bar').classList.remove('hidden');
     document.body.classList.add('hasbar');
 
     if (playlist) {
       const img = h('img'), no = h('div', { className: 'pgno' });
       parts.push(h('div', { className: 'stage' }, img, no));
+      getMarks = () => q.filter(e => e.tn === q[ti].tn).map(e => ({ t: e.st || 0, label: pageNo(e.pi) }));
       let shown = -1;
       sync = () => {
         const pi = q[ti].pi;
@@ -599,6 +640,7 @@ async function openChapter(ch, auto, resume) {
       const starts = list.map((p, i) => p.start_time != null ? Number(p.start_time) : (i === 0 ? 0 : Infinity));
       const img = h('img'), no = h('div', { className: 'pgno' });
       parts.push(h('div', { className: 'stage' }, img, no));
+      getMarks = () => starts.map((st, i) => ({ t: st, i })).filter(m => Number.isFinite(m.t) && trk[m.i] === q[ti].tn).map(m => ({ t: m.t, label: pageNo(m.i) }));
       let shown = -1;
       sync = () => {
         const now = au.currentTime, cur = q[ti].tn; let idx = 0;
