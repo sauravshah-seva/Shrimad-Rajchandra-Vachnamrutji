@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Shrimad Rajchandra Vachnamrutji</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Noto+Sans+Gujarati:wght@300;400&family=Noto+Serif+Gujarati:wght@300;400;700&display=swap" rel="stylesheet">
@@ -178,142 +178,6 @@ body.mainpg header .link:hover{border-color:#fff}
 #main .st{font-size:clamp(1.25rem,2.8vw,2rem);margin-bottom:22px}
 #main .btn{margin-top:14px;border-color:#fff;color:#fff;background:rgba(0,0,0,.25);text-shadow:0 1px 3px rgba(0,0,0,.6)}
 #main .btn:hover{background:#fff;color:var(--ink);text-shadow:none}
-
-/* =====================================================================
-   MOBILE + TABLET: works in portrait and landscape
-   (everything below only adds to / overrides the rules above)
-   ===================================================================== */
-
-/* --- all screens --- */
-html{-webkit-text-size-adjust:100%;text-size-adjust:100%}      /* stops iPhones inflating text in landscape */
-body{overflow-x:hidden;min-height:100vh;min-height:100dvh}
-img,video,canvas,svg{max-width:100%}
-button,.btn,.link{touch-action:manipulation}
-.wrap{padding-left:max(24px,env(safe-area-inset-left));padding-right:max(24px,env(safe-area-inset-right))}  /* keeps content clear of the notch in landscape */
-#bar{padding-left:max(24px,env(safe-area-inset-left));padding-right:max(24px,env(safe-area-inset-right))}
-#toc,#reader{min-width:0}
-#toc li button{overflow-wrap:anywhere}
-#reader{scroll-margin-top:12px}
-header{flex-wrap:wrap;gap:8px 16px}
-header .right{min-width:0}
-nav{flex-wrap:wrap;gap:4px 22px;justify-content:flex-end}
-
-/* --- touch screens: bigger tap targets, and 16px inputs so iOS does not zoom in on focus --- */
-@media(pointer:coarse){
-  input,select,textarea{font-size:16px!important}
-  nav .link,.tabs .link{padding:8px 2px}
-  #toc li button{padding-top:14px;padding-bottom:14px}
-  #bar .sp,#bar .bmk{min-height:36px;padding:6px 12px}
-  #bar .tbtn{min-width:40px;min-height:40px}
-  .pgbox .act{padding:6px 0}
-}
-
-/* --- phones: the cover photo is drawn by a fixed layer (iOS ignores background-attachment:fixed) --- */
-@media(hover:none){
-  body.home{background:#12142b}
-  body.home::after{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;background:url(Cover.jpg) center/cover no-repeat}
-}
-
-/* --- tablets and landscape phones (up to 1000px wide): narrower contents column --- */
-@media(max-width:1000px){
-  #lib{grid-template-columns:230px minmax(0,1fr);gap:32px}
-}
-
-/* --- admin screens and anything under 900px --- */
-@media(max-width:900px){
-  #admin{padding:28px 0 100px}
-  #admin h2{font-size:1.7rem}
-  .tabs{flex-wrap:wrap;gap:10px 22px}
-  table{min-width:640px}
-  .tw{-webkit-overflow-scrolling:touch}
-
-  /* chapter rows stack into two columns */
-  .row{grid-template-columns:1fr 1fr;gap:10px 12px;padding:14px 0}
-  .row>:nth-child(2),.row>:nth-child(3),.row>:nth-child(4){grid-column:1/-1}
-  .row>:nth-child(5){order:-1}
-  .row input,.row select{width:100%;border:1px solid var(--line);padding:8px 10px;background:#fff}
-  .row .link{justify-self:start}
-
-  /* pages & audio editor */
-  #timing{padding:14px}
-  #timing .prev{flex-wrap:wrap}
-  #timing .prev audio{width:100%}
-  .pgbox{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px}
-  .pgbox .subs{flex:1 1 100%;grid-template-columns:1fr 1fr}
-  .pgbox .subs .plabel{grid-column:1/-1!important}
-  .pgbox .subs .plabel:empty{display:none}
-  .pgbox .hint,.pgbox .opts{flex:1 1 100%}
-  .pgbox input,.pgbox select{max-width:100%}
-}
-
-/* --- phones and small tablets in portrait (and small landscape): single column --- */
-@media(max-width:800px){
-  #lib{grid-template-columns:minmax(0,1fr);gap:24px;padding:24px 0 80px}
-  body.hasbar #lib{padding-bottom:260px}
-  #toc h2{font-size:1.5rem;margin-bottom:12px}
-  #toc ol{max-height:55vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
-  #reader h2{font-size:clamp(1.5rem,6vw,2.2rem);margin-bottom:16px}
-
-  /* bottom player: audio bar on its own row, then track buttons, speeds and bookmark */
-  #bar .nowp{display:none}
-  #bar .in{gap:8px 10px}
-  #bar .in audio{flex:1 1 100%;order:1}
-  #bar .tctl{order:2}
-  #bar .spds{order:3;flex-wrap:wrap}
-  #bar .bmk{order:4;margin-left:auto}
-}
-
-/* --- nav and header on phones --- */
-@media(max-width:700px){
-  header{padding:16px 0}
-  .brand{font-size:1.1rem;letter-spacing:.04em}
-  nav{gap:4px 16px}
-  #main .verse{padding:24px 12px}
-}
-
-@media(max-width:600px){
-  .wrap{padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right))}
-  #bar{padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right))}
-  body.home #auth{padding-bottom:12vh}
-  #authForm{padding:14px;gap:10px}
-}
-
-/* --- phones held sideways: very little height, so compact everything --- */
-@media(orientation:landscape) and (max-height:500px){
-  header{padding:10px 0}
-  .brand{font-size:1.1rem}
-
-  /* sign-in cover */
-  body.home #auth{min-height:calc(100vh - 56px);min-height:calc(100dvh - 56px);padding-bottom:5vh}
-  #authForm{padding:10px 14px 8px;gap:6px 12px}
-  #authForm input{padding:6px 10px}
-  #authForm .btn{padding:6px 22px}
-
-  /* main verse page */
-  #main{min-height:calc(100vh - 56px);min-height:calc(100dvh - 56px);padding:8px 0 24px}
-  #main .verse{padding:12px 16px}
-  #main p{line-height:1.5}
-  #main .om{font-size:clamp(1.8rem,10vh,2.6rem);margin-bottom:4px}
-  #main .st{font-size:clamp(.95rem,5vh,1.4rem);margin-bottom:10px}
-  #main .btn{margin-top:6px;padding:8px 22px}
-
-  /* library */
-  #lib{padding:20px 0 60px}
-  body.hasbar #lib{padding-bottom:150px}
-  #toc ol{max-height:60vh}
-
-  /* bottom player: compact, wraps onto two short rows only when needed */
-  #bar{padding-top:6px;padding-bottom:calc(6px + env(safe-area-inset-bottom,0px))}
-  #bar .in{gap:6px 10px}
-  #bar .in audio{flex:1 1 260px;order:0;height:34px}
-  #bar .tctl,#bar .spds,#bar .bmk{order:0}
-  #bar .bmk{margin-left:0}
-  #bar .spds{flex-wrap:nowrap}
-  #bar .sp{padding:2px 7px;min-height:30px}
-  #bar .bmk{min-height:30px}
-  #bar .mline{margin-top:2px}
-  #bar .rail{height:34px}
-}
 </style>
 </head>
 <body>
@@ -406,7 +270,7 @@ try{var k=Object.keys(localStorage).some(function(x){return /^sb-.*-auth-token$/
 <script>
 /* ====== EDIT THESE ====== */
 const SUPABASE_URL = 'https://lpowlcdawtpdttmahxaw.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxwb3dsY2Rhd3RwZHR0bWFoeGF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA2MzgyOTAsImV4cCI6MjEwNjIxNDI5MH0.E5zXL0RL9cljYUBEslPXKuyuU5buKbC30pxWNltTiUs';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxwb3dsY2Rhd3RwZHR0bWFoeGF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA2MzgyOTAsImV4cCI6MjEwNjIxNDI5MH0.E5zXL0RL9cljYUBEslPXKxyuU5buKbC30pxWNltTiUs';
 const BOOK = { title: 'Shrimad Rajchandra Vachnamrutji', tagline: 'જેણે આત્મા જાણ્યો તેણે સર્વ જાણ્યું.' };
 const QUOTA_MB = 1024; /* Supabase free storage */
 /* ======================== */
@@ -438,12 +302,6 @@ function applyLang() {
 }
 applyLang();
 const store = { get: k => { try { return sessionStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { sessionStorage.setItem(k, v); } catch (e) {} } };
-/* On phones the contents list sits above the reader, so scroll to the reader instead of the very top (same breakpoint as the CSS) */
-const toReader = smooth => {
-  const b = smooth ? 'smooth' : 'auto';
-  if (window.matchMedia('(max-width:800px)').matches && !$('lib').classList.contains('hidden')) $('reader').scrollIntoView({ behavior: b, block: 'start' });
-  else window.scrollTo({ top: 0, behavior: b });
-};
 const show = v => {
   if (v !== 'auth') store.set('view', v);
   document.body.classList.remove('boot');
@@ -543,7 +401,7 @@ async function deleteBookmark(cid) {
 function resumeBookmark(b) {
   const ch = chapters.find(c => c.id === b.chapter_id); if (!ch) return;
   for (let p = chapters.find(c => c.id === ch.parent_id); p; p = chapters.find(c => c.id === p.parent_id)) expanded.add(p.id);
-  renderToc(); toReader(true);
+  renderToc(); window.scrollTo({ top: 0, behavior: 'smooth' });
   openChapter(ch, true, { ti: b.ti || 0, t: b.t || 0 });
 }
 function renderBookmarks() {
@@ -645,7 +503,7 @@ function offerNext(ch, au) {
   const go = () => {
     clearInterval(nextTimer);
     for (let p = chapters.find(c => c.id === nx.parent_id); p; p = chapters.find(c => c.id === p.parent_id)) expanded.add(p.id);
-    renderToc(); toReader(true);
+    renderToc(); window.scrollTo({ top: 0, behavior: 'smooth' });
     openChapter(nx, true);
   };
   const stop = h('button', { type: 'button', className: 'link', textContent: 'Stop', onclick: () => { clearInterval(nextTimer); row.remove(); } });
@@ -775,7 +633,7 @@ async function openChapter(ch, auto, resume) {
         img.src = urls[pi] || ''; img.alt = `${ttl(ch)}, page ${pi + 1}`;
         no.textContent = `${pi + 1} / ${list.length}`;
         if (urls[pi + 1]) new Image().src = urls[pi + 1];
-        if (!first) toReader(true);
+        if (!first) window.scrollTo({ top: 0, behavior: 'smooth' });
       };
     } else if (timed) {
       const trk = list.map(p => p.track || 1);
@@ -792,7 +650,7 @@ async function openChapter(ch, auto, resume) {
         img.src = urls[idx] || ''; img.alt = `${ttl(ch)}, page ${idx + 1}`;
         no.textContent = `${idx + 1} / ${list.length}`;
         if (urls[idx + 1]) new Image().src = urls[idx + 1]; /* preload next page */
-        if (!first) toReader(true);
+        if (!first) window.scrollTo({ top: 0, behavior: 'smooth' });
       };
       ['timeupdate', 'seeked', 'loadedmetadata'].forEach(ev => au.addEventListener(ev, () => sync()));
     }
@@ -808,7 +666,7 @@ async function openChapter(ch, auto, resume) {
   }
   if (!aurls.length && !list.length) parts.push(h('p', { className: 'empty', textContent: t('pickSub') }));
   $('reader').replaceChildren(...parts);
-  toReader(false);
+  window.scrollTo({ top: 0 });
 }
 
 /* ---------- admin: tabs & stats ---------- */
