@@ -32,17 +32,25 @@ input::placeholder{color:#6d7091}
 .btn:hover{background:var(--gold);color:var(--bg)}
 .msg{min-height:1.5em;font-size:.9rem;color:var(--gold)}
 #lib{display:grid;grid-template-columns:300px 1fr;gap:64px;padding:56px 0 120px}
+body.hasbar #lib{padding-bottom:150px}
 #toc h2{font-size:1.9rem;margin-bottom:24px}
 #toc ol{list-style:none;padding:0}
 #toc li button{display:block;width:100%;text-align:left;background:none;border:0;border-left:1px solid var(--line);padding:12px 18px;color:var(--mute);cursor:pointer;font:1.2rem 'Cormorant Garamond','Noto Serif Gujarati',serif;transition:.3s}
 #toc li button:hover{color:var(--ink)}
 #toc li button[aria-current=true]{border-left-color:var(--gold);color:var(--ink);padding-left:26px}
 #reader h2{font-size:clamp(2rem,4vw,3rem);margin-bottom:24px}
-.player{position:sticky;top:0;z-index:5;background:linear-gradient(var(--bg) 75%,transparent);padding:14px 0 26px}
 audio{width:100%;height:40px}
-.pages{display:grid;gap:36px}
-.pages img{width:100%;border:1px solid var(--line);box-shadow:0 30px 60px -30px rgba(28,30,58,.35);background:var(--panel);min-height:200px}
+.pages,.stage{display:grid;gap:36px}
+.stage{gap:10px}
+.pages img,.stage img{width:100%;border:1px solid var(--line);box-shadow:0 30px 60px -30px rgba(28,30,58,.35);background:var(--panel);min-height:200px}
+.pgno{color:var(--mute);font-size:.85rem;text-align:center}
 .empty{color:var(--mute);font:italic 1.3rem 'Cormorant Garamond','Noto Serif Gujarati',serif}
+/* bottom audio player */
+#bar{position:fixed;left:0;right:0;bottom:0;z-index:20;background:rgba(255,255,255,.96);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid var(--line);padding:10px 24px calc(10px + env(safe-area-inset-bottom,0px));box-shadow:0 -10px 30px -20px rgba(28,30,58,.35)}
+#bar .in{max-width:1100px;margin:0 auto;display:flex;gap:16px;align-items:center}
+#bar .nowp{font:1.15rem 'Cormorant Garamond','Noto Serif Gujarati',serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:30%}
+#bar audio{flex:1;min-width:0}
+@media(max-width:600px){#bar .nowp{display:none}}
 #admin{padding:48px 0 120px}
 #admin h2{font-size:2.2rem;margin-bottom:8px}
 .bar{height:2px;background:var(--line);margin:14px 0 36px;max-width:420px}.bar i{display:block;height:100%;background:var(--gold)}
@@ -51,13 +59,20 @@ audio{width:100%;height:40px}
 label{display:grid;gap:6px;color:var(--mute);font-size:.9rem}
 .drop{border:1px dashed var(--line);padding:22px;text-align:center;color:var(--mute);cursor:pointer;transition:.3s}
 .drop.over,.drop:hover{border-color:var(--gold);color:var(--ink)}
-.row{display:grid;grid-template-columns:60px 1fr 1fr 150px auto auto auto;gap:14px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.row{display:grid;grid-template-columns:60px 1fr 1fr 150px auto auto auto auto;gap:14px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
 table{width:100%;border-collapse:collapse;font-size:.92rem}
 th{text-align:left;color:var(--mute);font-weight:300;padding:8px 10px 8px 0;border-bottom:1px solid var(--line)}
 td{padding:12px 10px 12px 0;border-bottom:1px solid var(--line)}
 .tag{color:var(--gold)}
 .tw{overflow-x:auto}
-@media(max-width:800px){#lib{grid-template-columns:1fr;gap:32px;padding-top:32px}}
+/* admin: page timings editor */
+#timing{border:1px solid var(--line);padding:22px;margin-bottom:36px;background:var(--panel);display:grid;gap:14px}
+#timing h3{font-size:1.6rem}
+#timing .note{color:var(--mute);font-size:.9rem}
+.trow{display:grid;grid-template-columns:70px 70px 110px auto auto;gap:14px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.trow img{width:60px;height:80px;object-fit:cover;border:1px solid var(--line)}
+.trow input{border:1px solid var(--line);padding:6px 8px;background:#fff}
+@media(max-width:800px){#lib{grid-template-columns:1fr;gap:32px;padding-top:32px}.trow{grid-template-columns:60px 1fr;}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 body.home{background:linear-gradient(rgba(18,20,43,.6),rgba(18,20,43,.9)),url(Cover.jpg) center/cover fixed no-repeat}
 body.home header{border-color:transparent}
@@ -140,11 +155,14 @@ header .right{display:flex;gap:22px;align-items:center;margin-left:auto}
       <div class="msg" id="upMsg" role="status"></div>
     </form>
   </div>
-  <div class="pane wide hidden" id="p-ch"><div id="rows"></div></div>
+  <div class="pane wide hidden" id="p-ch"><div id="timing" class="hidden"></div><div id="rows"></div></div>
   <div class="pane wide hidden" id="p-mem"><div class="tw"><table><thead><tr><th>Name</th><th>Email</th><th>Joined</th><th>Last seen</th><th>Access</th><th>Role</th></tr></thead><tbody id="mrows"></tbody></table></div></div>
 </div>
 </section>
 </div>
+
+<!-- bottom audio player -->
+<div id="bar" class="hidden"></div>
 
 <script>
 /* ====== EDIT THESE ====== */
@@ -180,7 +198,11 @@ function applyLang() {
   $('toggle').textContent = t(signup ? 'have' : 'new');
 }
 applyLang();
-const show = v => { document.body.classList.toggle('home', v === 'auth'); ['auth', 'lib', 'admin'].forEach(s => $(s).classList.toggle('hidden', s !== v)); };
+const show = v => {
+  if (v !== 'lib') stopBar();
+  document.body.classList.toggle('home', v === 'auth');
+  ['auth', 'lib', 'admin'].forEach(s => $(s).classList.toggle('hidden', s !== v));
+};
 
 /* ---------- auth ---------- */
 $('toggle').onclick = () => {
@@ -225,6 +247,27 @@ const expanded = new Set();
 /* Chapter titles always show in Gujarati, falling back to English if none entered */
 const ttl = c => c.title_gu || c.title;
 
+/* time helpers: "1:25" <-> seconds */
+const parseT = s => {
+  s = String(s).trim(); if (!s) return null;
+  const p = s.split(':').map(Number);
+  if (p.length > 3 || p.some(x => Number.isNaN(x) || x < 0)) return NaN;
+  return p.reduce((a, x) => a * 60 + x, 0);
+};
+const fmtT = s => {
+  if (s == null) return '';
+  s = Math.floor(s);
+  const hh = Math.floor(s / 3600), mm = Math.floor(s % 3600 / 60), ss = s % 60;
+  return (hh ? hh + ':' + String(mm).padStart(2, '0') : mm) + ':' + String(ss).padStart(2, '0');
+};
+
+function stopBar() {
+  const bar = $('bar'), au = bar.querySelector('audio');
+  if (au) au.pause();
+  bar.replaceChildren(); bar.classList.add('hidden');
+  document.body.classList.remove('hasbar');
+}
+
 async function loadChapters() {
   const { data } = await sb.from('chapters').select('*').order('position');
   chapters = data || [];
@@ -254,13 +297,53 @@ async function openChapter(ch) {
     ch.audio_path ? sb.storage.from(B).createSignedUrl(ch.audio_path, 7200) : Promise.resolve({ data: null }),
     sb.from('pages').select('*').eq('chapter_id', ch.id).order('position')
   ]);
-  const au = h('audio', { controls: true, preload: 'metadata' }); if (a) au.src = a.signedUrl;
-  const box = h('div', { className: 'pages' });
-  if (pgs && pgs.length) {
-    const { data: u } = await sb.storage.from(B).createSignedUrls(pgs.map(p => p.image_path), 7200);
-    (u || []).forEach((x, i) => box.append(h('img', { alt: `${ttl(ch)}, page ${i + 1}`, loading: 'lazy', src: x.signedUrl })));
+  if (current !== ch.id) return; /* user already clicked another chapter */
+  const list = pgs || [];
+  let urls = [];
+  if (list.length) {
+    const { data: u } = await sb.storage.from(B).createSignedUrls(list.map(p => p.image_path), 7200);
+    urls = (u || []).map(x => x.signedUrl);
   }
-  $('reader').replaceChildren(h('h2', { textContent: ttl(ch) }), a ? h('div', { className: 'player' }, au) : '', box, !a && !(pgs && pgs.length) ? h('p', { className: 'empty', textContent: t('pickSub') }) : '');
+  if (current !== ch.id) return;
+
+  stopBar();
+  const parts = [h('h2', { textContent: ttl(ch) })];
+  /* timed mode: audio exists and the admin has set at least one page time */
+  const timed = !!a && list.some(p => p.start_time != null);
+
+  if (a) {
+    const au = h('audio', { controls: true, preload: 'metadata', src: a.signedUrl });
+    $('bar').append(h('div', { className: 'in' }, h('span', { className: 'nowp', textContent: ttl(ch) }), au));
+    $('bar').classList.remove('hidden');
+    document.body.classList.add('hasbar');
+
+    if (timed) {
+      const starts = list.map((p, i) => p.start_time != null ? Number(p.start_time) : (i === 0 ? 0 : Infinity));
+      const img = h('img'), no = h('div', { className: 'pgno' });
+      parts.push(h('div', { className: 'stage' }, img, no));
+      let shown = -1;
+      const sync = () => {
+        const now = au.currentTime; let idx = 0;
+        starts.forEach((s, i) => { if (s <= now) idx = i; });
+        if (idx === shown) return;
+        const first = shown === -1; shown = idx;
+        img.src = urls[idx] || ''; img.alt = `${ttl(ch)}, page ${idx + 1}`;
+        no.textContent = `${idx + 1} / ${list.length}`;
+        if (urls[idx + 1]) new Image().src = urls[idx + 1]; /* preload next page */
+        if (!first) window.scrollTo({ top: 0, behavior: 'smooth' });
+      };
+      ['timeupdate', 'seeked', 'loadedmetadata'].forEach(ev => au.addEventListener(ev, sync));
+      sync();
+    }
+  }
+
+  if (!timed && list.length) {
+    const box = h('div', { className: 'pages' });
+    urls.forEach((src, i) => box.append(h('img', { alt: `${ttl(ch)}, page ${i + 1}`, loading: 'lazy', src })));
+    parts.push(box);
+  }
+  if (!a && !list.length) parts.push(h('p', { className: 'empty', textContent: t('pickSub') }));
+  $('reader').replaceChildren(...parts);
   window.scrollTo({ top: 0 });
 }
 
@@ -358,6 +441,54 @@ $('upForm').onsubmit = async e => {
   } catch (err) { m.textContent = 'Upload failed: ' + err.message; }
 };
 
+/* ---------- admin: page timings ---------- */
+async function openTiming(ch) {
+  const box = $('timing');
+  box.classList.remove('hidden');
+  box.replaceChildren(h('p', { className: 'note', textContent: 'Loading...' }));
+  box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const { data: pgs } = await sb.from('pages').select('*').eq('chapter_id', ch.id).order('position');
+  const list = pgs || [];
+  const [{ data: a }, { data: u }] = await Promise.all([
+    sb.storage.from(B).createSignedUrl(ch.audio_path, 7200),
+    list.length ? sb.storage.from(B).createSignedUrls(list.map(p => p.image_path), 7200) : Promise.resolve({ data: [] })
+  ]);
+  const au = h('audio', { controls: true, preload: 'metadata' }); if (a) au.src = a.signedUrl;
+  const msg = h('div', { className: 'msg', role: 'status' });
+  const inputs = list.map((p, i) => {
+    const inp = h('input', { type: 'text', placeholder: 'm:ss', ariaLabel: `Page ${i + 1} start time`,
+      value: p.start_time != null ? fmtT(p.start_time) : (i === 0 ? '0:00' : '') });
+    const thumb = h('img', { alt: `Page ${i + 1}`, src: (u && u[i] && u[i].signedUrl) || '' });
+    const now = h('button', { type: 'button', className: 'link', textContent: 'Use current time', onclick: () => { inp.value = fmtT(au.currentTime); } });
+    const go = h('button', { type: 'button', className: 'link', textContent: 'Play from here', onclick: () => {
+      const s = parseT(inp.value); if (s != null && !Number.isNaN(s)) { au.currentTime = s; au.play(); }
+    } });
+    return { inp, row: h('div', { className: 'trow' }, thumb, h('span', { textContent: `Page ${i + 1}` }), inp, now, go) };
+  });
+  const save = h('button', { className: 'btn', textContent: 'Save timings', onclick: async () => {
+    const vals = inputs.map(x => parseT(x.inp.value));
+    if (vals.some(v => Number.isNaN(v))) return msg.textContent = 'Use the format m:ss, for example 1:25.';
+    let prev = -1;
+    for (const v of vals) { if (v == null) continue; if (v < prev) return msg.textContent = 'Times must increase from one page to the next.'; prev = v; }
+    msg.textContent = 'Saving...';
+    const res = await Promise.all(list.map((p, i) =>
+      sb.from('pages').update({ start_time: vals[i] }).eq('chapter_id', ch.id).eq('position', p.position).select()));
+    const err = res.find(r => r.error);
+    if (err) msg.textContent = 'Save failed: ' + err.error.message;
+    else if (res.some(r => !r.data || !r.data.length)) msg.textContent = 'Nothing was saved. Check that the start_time column and the admin update policy exist (see setup SQL).';
+    else msg.textContent = 'Saved.';
+  } });
+  const close = h('button', { type: 'button', className: 'link', textContent: 'Close', onclick: () => { au.pause(); box.classList.add('hidden'); box.replaceChildren(); } });
+  box.replaceChildren(
+    h('h3', { textContent: 'Page timings: ' + ch.title }),
+    h('p', { className: 'note', textContent: 'Play the audio. When a page should appear, click "Use current time" on that page, or type the time as m:ss. Page 1 starts at 0:00. Leave later pages blank to skip them.' }),
+    au,
+    ...(list.length ? inputs.map(x => x.row) : [h('p', { className: 'note', textContent: 'This chapter has no pages yet. Upload page images first.' })]),
+    h('div', { style: 'display:flex;gap:24px;align-items:center' }, save, close),
+    msg
+  );
+}
+
 /* ---------- admin: chapters ---------- */
 function renderRows() {
   const box = $('rows');
@@ -374,6 +505,7 @@ function renderRows() {
       const r = await sb.from('chapters').update({ title: ti.value, title_gu: tg.value || null, position: +pos.value, parent_id: +par.value || null }).eq('id', ch.id);
       if (r.error) alert(r.error.message); loadChapters();
     } });
+    const tim = ch.audio_path ? h('button', { className: 'link', textContent: 'Timings', onclick: () => openTiming(ch) }) : h('span');
     const add = d < 3 ? h('button', { className: 'link', textContent: '+ Sub', onclick: () => {
       tab('up'); $('target').value = ''; syncTarget(); $('parent').value = ch.id; $('cTitle').focus();
     } }) : h('span');
@@ -385,7 +517,7 @@ function renderRows() {
       if (files.length) await sb.storage.from(B).remove(files);
       await sb.from('chapters').delete().eq('id', ch.id); await loadChapters(); loadStats();
     } });
-    const row = h('div', { className: 'row' }, pos, ti, tg, par, save, add, del);
+    const row = h('div', { className: 'row' }, pos, ti, tg, par, save, tim, add, del);
     row.style.marginLeft = (d - 1) * 22 + 'px'; return row;
   }));
 }
