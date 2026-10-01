@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Shrimad Rajchandra Vachnamrutji</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=Jost:wght@300;400&family=Noto+Sans+Gujarati:wght@300;400&family=Noto+Serif+Gujarati:wght@300;400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Noto+Sans+Gujarati:wght@300;400&family=Noto+Serif+Gujarati:wght@300;400&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <style>
 :root{--bg:#fff;--panel:#f7f5f0;--ink:#1c1e3a;--mute:#6b6e8a;--gold:#a6853c;--line:rgba(166,133,60,.3)}
 *{box-sizing:border-box;margin:0}
-body{background:#fff;color:var(--ink);font:300 16px/1.7 Jost,'Noto Sans Gujarati',sans-serif;min-height:100vh}
-h1,h2,h3{font-family:'Cormorant Garamond','Noto Serif Gujarati',serif;font-weight:300;letter-spacing:.02em}
+body{background:#fff;color:var(--ink);font:300 16px/1.7 Inter,'Noto Sans Gujarati',sans-serif;min-height:100vh}
+h1,h2,h3{font-family:Inter,'Noto Serif Gujarati',serif;font-weight:300;letter-spacing:.02em}
 button,input,select{font:inherit;color:inherit}
 select{background:var(--panel);border:0;border-bottom:1px solid var(--line);padding:10px 2px}
 :focus-visible{outline:1px solid var(--gold);outline-offset:3px}
@@ -19,13 +19,13 @@ select{background:var(--panel);border:0;border-bottom:1px solid var(--line);padd
 body.boot .wrap{visibility:hidden}
 .wrap{max-width:1100px;margin:0 auto;padding:0 24px}
 header{display:flex;justify-content:space-between;align-items:center;padding:28px 0;border-bottom:1px solid var(--line)}
-.brand{font:300 1.5rem 'Cormorant Garamond','Noto Serif Gujarati',serif;letter-spacing:.08em}
+.brand{font:300 1.5rem Inter,'Noto Serif Gujarati',serif;letter-spacing:.08em}
 nav{display:flex;gap:22px;color:var(--mute);font-size:.9rem}
 .link{background:none;border:0;cursor:pointer;color:var(--mute);border-bottom:1px solid transparent;padding:0}
 .link:hover,.link[aria-current=true]{color:var(--gold);border-color:var(--gold)}
 #auth{min-height:80vh;display:grid;place-items:center;text-align:center}
 #auth h1{font-size:clamp(2.6rem,7vw,4.8rem);line-height:1.1;margin-bottom:12px}
-.sub{color:var(--mute);max-width:36ch;margin:0 auto 40px;font:italic 1.3rem 'Cormorant Garamond','Noto Serif Gujarati',serif}
+.sub{color:var(--mute);max-width:36ch;margin:0 auto 40px;font:1.3rem Inter,'Noto Serif Gujarati',serif}
 form{display:grid;gap:18px;max-width:320px;margin:0 auto;text-align:left}
 input[type=email],input[type=password],input[type=text]{background:none;border:0;border-bottom:1px solid var(--line);padding:10px 2px;width:100%}
 input::placeholder{color:#6d7091}
@@ -36,7 +36,7 @@ input::placeholder{color:#6d7091}
 body.hasbar #lib{padding-bottom:150px}
 #toc h2{font-size:1.9rem;margin-bottom:24px}
 #toc ol{list-style:none;padding:0}
-#toc li button{display:block;width:100%;text-align:left;background:none;border:0;border-left:1px solid var(--line);padding:12px 18px;color:var(--mute);cursor:pointer;font:1.2rem 'Cormorant Garamond','Noto Serif Gujarati',serif;transition:.3s}
+#toc li button{display:block;width:100%;text-align:left;background:none;border:0;border-left:1px solid var(--line);padding:12px 18px;color:var(--mute);cursor:pointer;font:1.2rem Inter,'Noto Serif Gujarati',serif;transition:.3s}
 #toc li button:hover{color:var(--ink)}
 #toc li button[aria-current=true]{border-left-color:var(--gold);color:var(--ink);padding-left:26px}
 #reader h2{font-size:clamp(2rem,4vw,3rem);margin-bottom:24px}
@@ -45,13 +45,14 @@ audio{width:100%;height:40px}
 .stage{gap:10px}
 .pages img,.stage img{width:100%;border:1px solid var(--line);box-shadow:0 30px 60px -30px rgba(28,30,58,.35);background:var(--panel);min-height:200px}
 .pgno{color:var(--mute);font-size:.85rem;text-align:center}
-.empty{color:var(--mute);font:italic 1.3rem 'Cormorant Garamond','Noto Serif Gujarati',serif}
+.empty{color:var(--mute);font:1.3rem Inter,'Noto Serif Gujarati',serif}
 /* bottom audio player */
 #bar{position:fixed;left:0;right:0;bottom:0;z-index:20;background:rgba(255,255,255,.96);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid var(--line);padding:10px 24px calc(10px + env(safe-area-inset-bottom,0px));box-shadow:0 -10px 30px -20px rgba(28,30,58,.35)}
 #bar .in{max-width:1100px;margin:0 auto;display:flex;gap:16px;align-items:center}
-#bar .nowp{font:1.15rem 'Cormorant Garamond','Noto Serif Gujarati',serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:30%}
+#bar .nowp{font:1.15rem Inter,'Noto Serif Gujarati',serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:30%}
 #bar audio{flex:1;min-width:0}
 #bar .tctl{display:flex;align-items:center;gap:6px;white-space:nowrap;color:var(--mute);font-size:.9rem}
+#bar .spd{flex:none;width:auto;padding:4px 6px;font-size:.9rem}
 #bar .tbtn{font-size:1.6rem;line-height:1;padding:0 6px}
 #bar .tbtn:disabled{opacity:.3;cursor:default}
 @media(max-width:600px){#bar .nowp{display:none}}
@@ -82,7 +83,7 @@ td{padding:12px 10px 12px 0;border-bottom:1px solid var(--line)}
 .pgbox .opts{grid-column:2/-1}
 .pgbox .hint{grid-column:2/-1;color:var(--gold);font-size:.85rem}
 .pgbox img{width:60px;height:80px;object-fit:cover;border:1px solid var(--line)}
-.pgbox .act{background:none;border:0;border-bottom:1px solid transparent;padding:0;margin:0;cursor:pointer;color:var(--mute);font:300 16px/1.7 Jost,'Noto Sans Gujarati',sans-serif;letter-spacing:normal;text-align:left;justify-self:start;white-space:nowrap;-webkit-appearance:none;appearance:none}
+.pgbox .act{background:none;border:0;border-bottom:1px solid transparent;padding:0;margin:0;cursor:pointer;color:var(--mute);font:300 16px/1.7 Inter,'Noto Sans Gujarati',sans-serif;letter-spacing:normal;text-align:left;justify-self:start;white-space:nowrap;-webkit-appearance:none;appearance:none}
 .pgbox .act:hover,.pgbox .act:focus-visible{color:var(--gold);border-bottom-color:var(--gold)}
 .pgbox .plabel{grid-column:1/3;white-space:nowrap}
 .pgbox .plabel+select{grid-column:3}
@@ -383,8 +384,21 @@ async function openChapter(ch) {
     /* when a track finishes, continue with the next one */
     au.addEventListener('ended', () => { if (ti < q.length - 1) setTrack(ti + 1, true); });
 
+    /* playback speed (remembered; defaultPlaybackRate keeps it when the track changes) */
+    let saved = 1; try { saved = parseFloat(localStorage.getItem('speed')) || 1; } catch (e) {}
+    if (![0.75, 1, 1.25, 1.5, 1.75, 2].includes(saved)) saved = 1;
+    au.defaultPlaybackRate = au.playbackRate = saved;
+    const spd = h('select', { className: 'spd', ariaLabel: 'Playback speed', title: 'Playback speed' },
+      ...[0.75, 1, 1.25, 1.5, 1.75, 2].map(v => h('option', { value: v, textContent: v + 'x' })));
+    spd.value = saved;
+    spd.onchange = () => {
+      const v = parseFloat(spd.value);
+      au.defaultPlaybackRate = au.playbackRate = v;
+      try { localStorage.setItem('speed', v); } catch (e) {}
+    };
+
     $('bar').append(h('div', { className: 'in' }, h('span', { className: 'nowp', textContent: ttl(ch) }),
-      multi ? h('span', { className: 'tctl' }, prev, lab, next) : '', au));
+      multi ? h('span', { className: 'tctl' }, prev, lab, next) : '', au, spd));
     $('bar').classList.remove('hidden');
     document.body.classList.add('hasbar');
 
