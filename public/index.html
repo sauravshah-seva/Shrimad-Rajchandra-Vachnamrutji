@@ -82,13 +82,15 @@ td{padding:12px 10px 12px 0;border-bottom:1px solid var(--line)}
 .pgbox .opts{grid-column:2/-1}
 .pgbox .hint{grid-column:2/-1;color:var(--gold);font-size:.85rem}
 .pgbox img{width:60px;height:80px;object-fit:cover;border:1px solid var(--line)}
-.pgbox .link{text-align:left;justify-self:start}
+.pgbox .act{background:none;border:0;border-bottom:1px solid transparent;padding:0;margin:0;cursor:pointer;color:var(--mute);font:300 16px/1.7 Jost,'Noto Sans Gujarati',sans-serif;letter-spacing:normal;text-align:left;justify-self:start;white-space:nowrap;-webkit-appearance:none;appearance:none}
+.pgbox .act:hover,.pgbox .act:focus-visible{color:var(--gold);border-bottom-color:var(--gold)}
+.pgbox .plabel{grid-column:1/3;white-space:nowrap}
 .pgbox .pickl{border:0;border-bottom:1px solid transparent;background:none;color:var(--mute);cursor:pointer;padding:0;font:inherit;justify-self:start;max-width:100%}
 .pgbox .pickl:hover{color:var(--gold);border-bottom-color:var(--gold)}
 .pgbox .pickl option{color:var(--ink);background:#fff}
 .chips{display:inline-flex;gap:14px;flex-wrap:wrap;align-items:center}
 .chip{color:var(--mute)}
-.chip .link{padding:0 0 0 4px}
+.chip .act{padding:0 0 0 4px}
 .modenote{color:var(--gold);font-size:.9rem}
 @media(max-width:800px){#lib{grid-template-columns:1fr;gap:32px;padding-top:32px}.pgbox{grid-template-columns:60px 1fr}.pgbox>*{grid-column:auto!important}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -616,8 +618,8 @@ async function openTiming(ch, st) {
     const tsel = h('select', { ariaLabel: `Page ${i + 1} track` }, ...tr.map((_, k) => h('option', { value: k + 1, textContent: 'Track ' + (k + 1) })));
     tsel.value = dr ? dr.track : Math.min(p.track || 1, tr.length);
     const thumb = h('img', { alt: `Page ${i + 1}`, src: (u && u[i] && u[i].signedUrl) || '' });
-    const now = h('button', { type: 'button', className: 'link', textContent: 'Use current time', onclick: () => { if (pv < 0) return; inp.value = fmtT(au.currentTime); tsel.value = pv + 1; } });
-    const go = h('button', { type: 'button', className: 'link', textContent: 'Play from here', onclick: () => {
+    const now = h('button', { type: 'button', className: 'link act', textContent: 'Use current time', onclick: () => { if (pv < 0) return; inp.value = fmtT(au.currentTime); tsel.value = pv + 1; } });
+    const go = h('button', { type: 'button', className: 'link act', textContent: 'Play from here', onclick: () => {
       let s = parseT(inp.value); if (Number.isNaN(s)) return; if (s == null) s = 0;
       loadTrack((+tsel.value || 1) - 1, () => { au.currentTime = s; au.play(); });
     } });
@@ -625,11 +627,11 @@ async function openTiming(ch, st) {
     /* under each page: the tracks that play for this page, one after the other */
     const chips = h('span', { className: 'chips c3' });
     const hint = h('span', { className: 'hint' });
-    const opts = h('span', { className: 'chips opts hidden' }, ...tr.map((_, k) => h('button', { type: 'button', className: 'link', textContent: 'Track ' + (k + 1),
+    const opts = h('span', { className: 'chips opts hidden' }, ...tr.map((_, k) => h('button', { type: 'button', className: 'link act', textContent: 'Track ' + (k + 1),
       onclick: () => { lists[i].push(k + 1); opts.classList.add('hidden'); renderAll(); } })));
-    const pick = h('button', { type: 'button', className: 'link', textContent: '+ Pick an uploaded track',
+    const pick = h('button', { type: 'button', className: 'link act', textContent: '+ Pick an uploaded track',
       onclick: () => opts.classList.toggle('hidden') });
-    const upl = h('button', { type: 'button', className: 'link', textContent: '+ Upload new track',
+    const upl = h('button', { type: 'button', className: 'link act', textContent: '+ Upload new track',
       title: 'Upload audio and add it to this page',
       onclick: () => {
         const before = tr.length;
@@ -641,13 +643,13 @@ async function openTiming(ch, st) {
       } });
     redraw.push(() => {
       chips.replaceChildren(...lists[i].map((n, k) => h('span', { className: 'chip' }, 'Track ' + n,
-        h('button', { type: 'button', className: 'link', textContent: '\u00D7', ariaLabel: `Remove track ${n} from page ${i + 1}`,
+        h('button', { type: 'button', className: 'link act', textContent: '\u00D7', ariaLabel: `Remove track ${n} from page ${i + 1}`,
           onclick: () => { lists[i].splice(k, 1); renderAll(); } }))));
       hint.textContent = lists.some(l => l.length) && !lists[i].length ? 'No audio on this page, so it is skipped while playing.' : '';
     });
     return { inp, tsel,
       row: h('div', { className: 'pgbox' }, thumb, h('span', { textContent: `Page ${i + 1}` }), tr.length ? tsel : h('span'), inp, now, go,
-        h('span'), h('span', { textContent: 'Page audio:' }), chips, tr.length ? pick : h('span'), upl, opts, hint) };
+        h('span', { className: 'plabel', textContent: 'Page audio:' }), chips, tr.length ? pick : h('span'), upl, opts, hint) };
   });
   renderAll();
   if (st && st.note) msg.textContent = st.note;
