@@ -143,11 +143,16 @@ body.home:not(.dim) #authForm input::placeholder{color:#fff}
 header .right{display:flex;gap:22px;align-items:center;margin-left:auto}
 
 /* main page shown after sign-in */
-/* the whole picture is shown, fitted inside the window (nothing cropped); a blurred copy fills any spare space at the sides or top and bottom */
+/* the whole picture is shown, fitted inside the window (nothing cropped); a blurred copy fills spare space. Hovering/clicking Enter Library cross-fades to Main-2.jpg */
 body.mainpg{background:#111}
-body.mainpg::before,body.mainpg::after{content:'';position:fixed;inset:0;pointer-events:none}
-body.mainpg::before{background:url(Main-1.jpg) center/cover no-repeat;filter:blur(28px) brightness(.65);transform:scale(1.1);z-index:-2}
-body.mainpg::after{background:url(Main-1.jpg) center/contain no-repeat;z-index:-1}
+#mainbg{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden}
+#mainbg i{position:absolute;inset:0;transition:opacity .6s ease;background-position:center;background-repeat:no-repeat}
+#mainbg .b1,#mainbg .b2{background-size:cover;filter:blur(28px) brightness(.65);transform:scale(1.1)}
+#mainbg .f1,#mainbg .f2{background-size:contain}
+#mainbg .b1,#mainbg .f1{background-image:url(Main-1.jpg)}
+#mainbg .b2,#mainbg .f2{background-image:url(Main-2.jpg);opacity:0}
+body.peek #mainbg .b2,body.peek #mainbg .f2{opacity:1}
+body.peek #mainbg .b1,body.peek #mainbg .f1{opacity:0}
 body.mainpg header{border-color:transparent}
 body.mainpg .brand{display:none}
 body.mainpg header .link{color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.7)}
@@ -196,6 +201,7 @@ try{var k=Object.keys(localStorage).some(function(x){return /^sb-.*-auth-token$/
 </section>
 
 <section id="main" class="hidden">
+  <div id="mainbg" aria-hidden="true"><i class="b1"></i><i class="f1"></i><i class="b2"></i><i class="f2"></i></div>
   <div class="verse">
     <p class="om">ૐ</p>
     <p class="st">અહો!<br>સર્વોત્કૃષ્ટ શાંત રસમય સન્માર્ગ</p>
@@ -289,6 +295,7 @@ const show = v => {
   if (v !== 'lib') stopBar();
   document.body.classList.toggle('home', v === 'auth');
   document.body.classList.toggle('mainpg', v === 'main');
+  document.body.classList.remove('peek');
   ['auth', 'main', 'lib', 'admin'].forEach(s => $(s).classList.toggle('hidden', s !== v));
 };
 
@@ -321,6 +328,10 @@ $('authForm').onsubmit = async e => {
 };
 $('out').onclick = () => { store.set('view', ''); sb.auth.signOut(); };
 $('goMain').onclick = () => show('main');
+new Image().src = 'Main-2.jpg'; /* preload so the change is instant */
+{ const eb = $('enterLib'), peek = on => document.body.classList.toggle('peek', on);
+  ['mouseenter', 'focus', 'pointerdown'].forEach(ev => eb.addEventListener(ev, () => peek(true)));
+  ['mouseleave', 'blur'].forEach(ev => eb.addEventListener(ev, () => peek(false))); }
 $('enterLib').onclick = () => { show('lib'); loadChapters().then(loadBookmarks); };
 $('goLib').onclick = () => { show('lib'); loadChapters(); };
 $('goAdmin').onclick = () => { show('admin'); tab('up'); loadChapters(); loadStats(); };
