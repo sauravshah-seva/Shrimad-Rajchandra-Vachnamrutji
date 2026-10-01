@@ -143,12 +143,16 @@ body.home:not(.dim) #authForm input::placeholder{color:#fff}
 header .right{display:flex;gap:22px;align-items:center;margin-left:auto}
 
 /* main page shown after sign-in */
-body.mainpg{background:url(Main-1.jpg) center/cover fixed no-repeat}
+/* the whole picture is shown, fitted inside the window (nothing cropped); a blurred copy fills any spare space at the sides or top and bottom */
+body.mainpg{background:#111}
+body.mainpg::before,body.mainpg::after{content:'';position:fixed;inset:0;pointer-events:none}
+body.mainpg::before{background:url(Main-1.jpg) center/cover no-repeat;filter:blur(28px) brightness(.65);transform:scale(1.1);z-index:-2}
+body.mainpg::after{background:url(Main-1.jpg) center/contain no-repeat;z-index:-1}
 body.mainpg header{border-color:transparent}
 body.mainpg .brand{display:none}
 body.mainpg header .link{color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.7)}
 body.mainpg header .link:hover{border-color:#fff}
-#main{min-height:calc(100vh - 100px);display:grid;place-items:center;text-align:center;padding:20px 0 60px}
+#main{min-height:calc(100vh - 100px);min-height:calc(100dvh - 100px);display:grid;place-items:center;text-align:center;padding:20px 0 60px}
 #main .verse{padding:36px 32px;background:radial-gradient(closest-side,rgba(0,0,0,.38),rgba(0,0,0,0));animation:vfade 1s ease both}
 @keyframes vfade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 #main p{font-family:'Noto Serif Gujarati',serif;font-weight:700;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.65),0 0 2px rgba(0,0,0,.6);line-height:1.7}
@@ -196,7 +200,7 @@ try{var k=Object.keys(localStorage).some(function(x){return /^sb-.*-auth-token$/
     <p class="om">ૐ</p>
     <p class="st">અહો!<br>સર્વોત્કૃષ્ટ શાંત રસમય સન્માર્ગ</p>
     <p class="st">અહો!<br>તે સર્વોત્કૃષ્ટ શાંતરસપ્રધાન<br>માર્ગના મૂળ સર્વજ્ઞદેવ</p>
-    <p class="st">અહો!<br>તે સર્વોત્કૃષ્ટ શાંતરસ સુપ્રતીત<br>કરાવ્યો એવા પરમ કૃપાળુ<br>સદ્‌ગુરુદેવ</p>
+    <p class="st">અહો!<br>તે સર્વોત્કૃષ્ટ શાંતરસ સુપ્રતીત<br>કરાવ્યો એવા પરમ કૃપાળુ<br>સદ્ગુરુદેવ</p>
     <p class="st">આ વિશ્વમાં સર્વકાળ તમે<br>જયવંત વર્તો, જયવંત વર્તો</p>
     <button type="button" class="btn" id="enterLib">Enter Library</button>
   </div>
