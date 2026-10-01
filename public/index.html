@@ -16,6 +16,7 @@ button,input,select{font:inherit;color:inherit}
 select{background:var(--panel);border:0;border-bottom:1px solid var(--line);padding:10px 2px}
 :focus-visible{outline:1px solid var(--gold);outline-offset:3px}
 .hidden{display:none!important}
+body.boot .wrap{visibility:hidden}
 .wrap{max-width:1100px;margin:0 auto;padding:0 24px}
 header{display:flex;justify-content:space-between;align-items:center;padding:28px 0;border-bottom:1px solid var(--line)}
 .brand{font:300 1.5rem 'Cormorant Garamond','Noto Serif Gujarati',serif;letter-spacing:.08em}
@@ -95,7 +96,7 @@ body.home #bookTitle,body.home #bookTag,body.home .brand{display:none}
 header .right{display:flex;gap:22px;align-items:center;margin-left:auto}
 </style>
 </head>
-<body>
+<body class="boot">
 <div class="wrap">
 <header>
   <div class="brand" id="brand"></div>
@@ -199,10 +200,14 @@ function applyLang() {
 }
 applyLang();
 const show = v => {
+  document.body.classList.remove('boot');
   if (v !== 'lib') stopBar();
   document.body.classList.toggle('home', v === 'auth');
   ['auth', 'lib', 'admin'].forEach(s => $(s).classList.toggle('hidden', s !== v));
 };
+
+/* safety net: if the sign-in check never answers, show the sign-in page */
+setTimeout(() => { if (document.body.classList.contains('boot')) show('auth'); }, 5000);
 
 /* ---------- auth ---------- */
 $('toggle').onclick = () => {
