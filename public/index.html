@@ -52,6 +52,13 @@ audio{width:100%;height:40px}
 #bar .nowp{font:1.15rem Inter,'Noto Serif Gujarati',serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:30%}
 #bar audio{flex:1;min-width:0}
 #bar .tctl{display:flex;align-items:center;gap:6px;white-space:nowrap;color:var(--mute);font-size:.9rem}
+#toc #bmWrap{margin-top:36px}
+#toc #bms li{display:flex;align-items:stretch}
+#toc #bms li button:first-child{flex:1;min-width:0}
+#toc #bms .bsub{display:block;font:300 .85rem Inter,sans-serif;color:var(--mute);margin-top:2px}
+#toc #bms li button.bmx{width:auto;flex:none;border-left:0;padding:12px 14px;font-size:1.1rem}
+#bar .bmk{flex:none;font-size:.85rem;padding:3px 10px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--mute);cursor:pointer;white-space:nowrap}
+#bar .bmk:hover{color:var(--gold);border-color:var(--gold)}
 #bar .spds{display:flex;gap:4px;flex:none}
 #bar .sp{font-size:.8rem;padding:3px 8px;border:1px solid var(--line);border-radius:999px;color:var(--mute);background:#fff;cursor:pointer;white-space:nowrap}
 #bar .sp.on{background:var(--gold);border-color:var(--gold);color:#fff}
@@ -158,7 +165,8 @@ try{var k=Object.keys(localStorage).some(function(x){return /^sb-.*-auth-token$/
 </section>
 
 <section id="lib" class="hidden">
-  <aside id="toc"><h2 data-i="contents">Contents</h2><ol id="chapters"></ol></aside>
+  <aside id="toc"><h2 data-i="contents">Contents</h2><ol id="chapters"></ol>
+    <div id="bmWrap" class="hidden"><h2>Bookmarks</h2><ol id="bms"></ol></div></aside>
   <main id="reader"><p class="empty" data-i="choose">Choose a chapter to begin.</p></main>
 </section>
 
@@ -266,7 +274,7 @@ $('goAdmin').onclick = () => { show('admin'); tab('up'); loadChapters(); loadSta
 let shownUid = null;
 sb.auth.onAuthStateChange(async (_e, s) => {
   $('nav').classList.toggle('hidden', !s);
-  if (!s) { me = {}; shownUid = null; return show('auth'); }
+  if (!s) { me = {}; bms = []; shownUid = null; return show('auth'); }
   /* Supabase re-fires this on token refresh and when the tab regains focus.
      If the same user is already signed in, do nothing so the current page (e.g. admin) stays put. */
   if (shownUid === s.user.id) return;
@@ -279,9 +287,60 @@ sb.auth.onAuthStateChange(async (_e, s) => {
     if (me.is_admin && store.get('view') === 'admin') { show('admin'); tab(store.get('atab') || 'up'); loadChapters(); loadStats(); return; }
     show('lib');
     if (!me.approved && !me.is_admin) $('reader').replaceChildren(h('p', { className: 'empty', textContent: t('paused') }));
-    else loadChapters();
+    else loadChapters().then(loadBookmarks);
   });
 });
+
+/* ---------- bookmarks (saved per user; falls back to this browser if the bookmarks table is missing) ---------- */
+let bms = [], bmRemote = true;
+const bmLocal = {
+  get: () => { try { return JSON.parse(localStorage.getItem('bm:' + me.id) || '[]'); } catch (e) { return []; } },
+  set: a => { try { localStorage.setItem('bm:' + me.id, JSON.stringify(a)); } catch (e) {} }
+};
+async function loadBookmarks() {
+  const r = await sb.from('bookmarks').select('*').eq('user_id', me.id);
+  if (r.error) { bmRemote = false; bms = bmLocal.get(); }
+  else { bmRemote = true; bms = (r.data || []).map(x => ({ chapter_id: x.chapter_id, ti: x.track_index, t: Number(x.position_sec) || 0, at: x.created_at })); }
+  bms.sort((a, b) => String(b.at).localeCompare(String(a.at)));
+  renderBookmarks();
+}
+async function saveBookmark(b) {
+  b.at = new Date().toISOString();
+  bms = [b, ...bms.filter(x => x.chapter_id !== b.chapter_id)];
+  if (bmRemote) {
+    const r = await sb.from('bookmarks').upsert({ user_id: me.id, chapter_id: b.chapter_id, track_index: b.ti, position_sec: b.t, created_at: b.at }, { onConflict: 'user_id,chapter_id' });
+    if (r.error) bmRemote = false;
+  }
+  if (!bmRemote) bmLocal.set(bms);
+  renderBookmarks();
+}
+async function deleteBookmark(cid) {
+  bms = bms.filter(x => x.chapter_id !== cid);
+  if (bmRemote) await sb.from('bookmarks').delete().eq('user_id', me.id).eq('chapter_id', cid); else bmLocal.set(bms);
+  renderBookmarks();
+}
+function resumeBookmark(b) {
+  const ch = chapters.find(c => c.id === b.chapter_id); if (!ch) return;
+  for (let p = chapters.find(c => c.id === ch.parent_id); p; p = chapters.find(c => c.id === p.parent_id)) expanded.add(p.id);
+  renderToc(); window.scrollTo({ top: 0, behavior: 'smooth' });
+  openChapter(ch, true, { ti: b.ti || 0, t: b.t || 0 });
+}
+function renderBookmarks() {
+  const list = bms.filter(b => chapters.some(c => c.id === b.chapter_id));
+  $('bmWrap').classList.toggle('hidden', !list.length);
+  $('bms').replaceChildren(...list.map(b => {
+    const ch = chapters.find(c => c.id === b.chapter_id);
+    return h('li', {},
+      h('button', { type: 'button', onclick: () => resumeBookmark(b) }, ttl(ch), h('span', { className: 'bsub', textContent: `Track ${(b.ti || 0) + 1} \u00B7 ${fmtT(b.t)}` })),
+      h('button', { type: 'button', className: 'bmx', textContent: '\u00D7', title: 'Remove bookmark', ariaLabel: 'Remove bookmark', onclick: () => deleteBookmark(b.chapter_id) }));
+  }));
+  /* nothing open yet: offer to resume the latest bookmark */
+  if (current === null && list.length && (me.approved || me.is_admin)) {
+    const b = list[0], ch = chapters.find(c => c.id === b.chapter_id);
+    $('reader').replaceChildren(h('p', { className: 'empty', textContent: t('choose') }),
+      h('button', { type: 'button', className: 'btn', textContent: `Resume: ${ttl(ch)} \u00B7 ${fmtT(b.t)}`, onclick: () => resumeBookmark(b) }));
+  }
+}
 
 /* ---------- reader ---------- */
 const kids = id => chapters.filter(c => c.parent_id === id).sort((a, b) => a.position - b.position);
@@ -371,7 +430,7 @@ function offerNext(ch, au) {
   nextTimer = setInterval(() => { if (--left <= 0) go(); else upd(); }, 1000);
 }
 
-async function openChapter(ch, auto) {
+async function openChapter(ch, auto, resume) {
   current = ch.id;
   document.querySelectorAll('#chapters button').forEach(b => b.setAttribute('aria-current', b.dataset.id == ch.id));
   const tr = tracksOf(ch);
@@ -438,8 +497,14 @@ async function openChapter(ch, auto) {
     spd.append(...spBtns);
     setSpd(saved);
 
+    const bmk = h('button', { type: 'button', className: 'link bmk', textContent: 'Bookmark', title: 'Save this spot and resume later',
+      onclick: async () => {
+        await saveBookmark({ chapter_id: ch.id, ti, t: Math.floor(au.currentTime) });
+        bmk.textContent = 'Saved \u2713'; setTimeout(() => { bmk.textContent = 'Bookmark'; }, 1800);
+      } });
+
     $('bar').append(h('div', { className: 'in' }, h('span', { className: 'nowp', textContent: ttl(ch) }),
-      multi ? h('span', { className: 'tctl' }, prev, lab, next) : '', au, spd));
+      multi ? h('span', { className: 'tctl' }, prev, lab, next) : '', au, spd, bmk));
     $('bar').classList.remove('hidden');
     document.body.classList.add('hasbar');
 
@@ -474,7 +539,9 @@ async function openChapter(ch, auto) {
       };
       ['timeupdate', 'seeked', 'loadedmetadata'].forEach(ev => au.addEventListener(ev, () => sync()));
     }
-    setTrack(0, !!auto);
+    const rs = resume && resume.ti < q.length ? resume : null;
+    setTrack(rs ? rs.ti : 0, !!auto);
+    if (rs && rs.t > 0) { const go1 = () => { au.removeEventListener('loadedmetadata', go1); au.currentTime = rs.t; }; au.addEventListener('loadedmetadata', go1); }
   }
 
   if (!timed && !playlist && list.length) {
