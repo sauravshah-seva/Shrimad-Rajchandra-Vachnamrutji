@@ -252,9 +252,14 @@ $('out').onclick = () => sb.auth.signOut();
 $('goLib').onclick = () => { show('lib'); loadChapters(); };
 $('goAdmin').onclick = () => { show('admin'); tab('up'); loadChapters(); loadStats(); };
 
+let shownUid = null;
 sb.auth.onAuthStateChange(async (_e, s) => {
   $('nav').classList.toggle('hidden', !s);
-  if (!s) { me = {}; return show('auth'); }
+  if (!s) { me = {}; shownUid = null; return show('auth'); }
+  /* Supabase re-fires this on token refresh and when the tab regains focus.
+     If the same user is already signed in, do nothing so the current page (e.g. admin) stays put. */
+  if (shownUid === s.user.id) return;
+  shownUid = s.user.id;
   setTimeout(async () => {
     sb.rpc('touch_me');
     const { data } = await sb.from('profiles').select('*').eq('id', s.user.id).single();
