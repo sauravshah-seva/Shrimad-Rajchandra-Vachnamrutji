@@ -137,10 +137,17 @@ body.home:not(.dim) #authForm input::placeholder{color:#fff}
 #authForm .link{color:rgba(255,255,255,.85);text-align:center;font-size:.85rem}
 #authForm .link:hover{color:#fff;border-color:#fff}
 #authForm .msg{color:#f3e2b3;text-align:center;font-size:.82rem;min-height:0;line-height:1.3}
+#authForm #mobRow{grid-column:1/-1;display:grid;grid-template-columns:112px 1fr;gap:8px 10px}
+#authForm select{width:100%;background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.28);border-radius:6px;padding:8px 6px;font-size:.95rem}
+#authForm select option{color:#1c1e3a;background:#fff}
+#authForm select:focus{outline:0;border-color:#fff;background:rgba(255,255,255,.25)}
+body.home:not(.dim) #authForm select{border-color:rgba(255,255,255,.7);background:rgba(0,0,0,.18);text-shadow:0 1px 3px rgba(0,0,0,.75)}
 #toc li button{padding-left:calc(18px + (var(--d,1) - 1)*20px)}
 #toc li button[aria-current=true]{padding-left:calc(26px + (var(--d,1) - 1)*20px)}
 #toc li button[data-d="2"]{font-size:1.05rem}#toc li button[data-d="3"]{font-size:.95rem}
 header .right{display:flex;gap:22px;align-items:center;margin-left:auto}
+/* main page right after sign-in: Home, Library and Sign out stay hidden until the user clicks Enter Library */
+body.intro #goMain,body.intro #goLib,body.intro #out{display:none}
 
 /* main page shown after sign-in */
 /* the whole picture is shown, fitted inside the window (nothing cropped); a blurred copy fills spare space. Hovering/clicking Enter Library cross-fades to Main-2.jpg */
@@ -191,6 +198,10 @@ try{var k=Object.keys(localStorage).some(function(x){return /^sb-.*-auth-token$/
     <p class="sub" id="bookTag"></p>
     <form id="authForm">
       <input type="text" id="nm" placeholder="Your name" data-p="name" class="hidden" autocomplete="name">
+      <div id="mobRow" class="hidden">
+        <select id="cc" aria-label="Country code"></select>
+        <input type="text" id="mob" inputmode="tel" placeholder="Mobile number" data-p="mobile" autocomplete="tel-national">
+      </div>
       <input type="email" id="em" placeholder="Email" data-p="email" required autocomplete="email">
       <input type="password" id="pw" placeholder="Password (6+ characters)" data-p="pass" required minlength="6" autocomplete="current-password">
       <button class="btn" id="authBtn">Sign in</button>
@@ -246,7 +257,7 @@ try{var k=Object.keys(localStorage).some(function(x){return /^sb-.*-auth-token$/
     </form>
   </div>
   <div class="pane wide hidden" id="p-ch"><input type="file" id="fT" accept="audio/*" multiple class="hidden"><div class="msg" id="trkMsg" role="status"></div><div id="timing" class="hidden"></div><div id="rows"></div></div>
-  <div class="pane wide hidden" id="p-mem"><div class="tw"><table><thead><tr><th>Name</th><th>Email</th><th>Joined</th><th>Last seen</th><th>Access</th><th>Role</th></tr></thead><tbody id="mrows"></tbody></table></div></div>
+  <div class="pane wide hidden" id="p-mem"><div class="tw"><table><thead><tr><th>Name</th><th>Email</th><th>Mobile</th><th>Joined</th><th>Last seen</th><th>Access</th><th>Role</th></tr></thead><tbody id="mrows"></tbody></table></div></div>
 </div>
 </section>
 </div>
@@ -275,7 +286,7 @@ $('bookTag').textContent = BOOK.tagline;
 /* Interface text is English only. Only chapter titles (the index) are Gujarati. */
 const T = {
   library: 'Library', home: 'Home', admin: 'Admin', out: 'Sign out', contents: 'Contents', choose: 'Choose a chapter to begin.',
-  name: 'Your name', email: 'Email', pass: 'Password (6+ characters)', signin: 'Sign in', create: 'Create account',
+  name: 'Your name', mobile: 'Mobile number', badMobile: 'Enter a valid mobile number without the country code.', email: 'Email', pass: 'Password (6+ characters)', signin: 'Sign in', create: 'Create account',
   'new': 'New here? Create an account', have: 'Already registered? Sign in',
   check: 'Check your email to confirm, then sign in.', paused: 'Your access is paused. Please contact the administrator.',
   empty: 'Chapters will appear here.', pickSub: 'Choose a sub-section from the contents.'
@@ -288,13 +299,31 @@ function applyLang() {
   $('toggle').textContent = t(signup ? 'have' : 'new');
 }
 applyLang();
+
+/* country codes for the signup form (add or remove lines as you like) */
+const CC = [['IN', '+91'], ['US/CA', '+1'], ['GB', '+44'], ['AE', '+971'], ['SA', '+966'], ['QA', '+974'], ['KW', '+965'], ['OM', '+968'], ['BH', '+973'],
+  ['SG', '+65'], ['MY', '+60'], ['AU', '+61'], ['NZ', '+64'], ['KE', '+254'], ['TZ', '+255'], ['UG', '+256'], ['ZA', '+27'], ['DE', '+49'], ['FR', '+33'],
+  ['NL', '+31'], ['IT', '+39'], ['CH', '+41'], ['SE', '+46'], ['JP', '+81'], ['HK', '+852'], ['TH', '+66'], ['ID', '+62'], ['PK', '+92'], ['BD', '+880'],
+  ['LK', '+94'], ['NP', '+977']];
+$('cc').replaceChildren(...CC.map(([n, c]) => h('option', { value: c, textContent: n + ' ' + c })));
+/* returns the number in international format (+919876543210), or null if it does not look valid */
+const cleanMobile = (cc, raw) => {
+  let n = String(raw).replace(/[\s\-().]/g, '');
+  if (/[^0-9]/.test(n)) return null;          /* letters, or a "+" typed by mistake */
+  n = n.replace(/^0+/, '');                    /* drop a leading 0 */
+  if (cc === '+91' && !/^[6-9][0-9]{9}$/.test(n)) return null;
+  if (n.length < 6 || (cc.length - 1) + n.length > 15) return null;
+  return cc + n;
+};
 const store = { get: k => { try { return sessionStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { sessionStorage.setItem(k, v); } catch (e) {} } };
 const show = v => {
   if (v !== 'auth') store.set('view', v);
+  if (v === 'lib') store.set('entered', '1');   /* once the library has been entered, the menu stays visible for this visit */
   document.body.classList.remove('boot');
   if (v !== 'lib') stopBar();
   document.body.classList.toggle('home', v === 'auth');
   document.body.classList.toggle('mainpg', v === 'main');
+  document.body.classList.toggle('intro', v === 'main' && !store.get('entered'));   /* main page before Enter Library: hide Home, Library, Sign out */
   document.body.classList.remove('peek');
   ['auth', 'main', 'lib', 'admin'].forEach(s => $(s).classList.toggle('hidden', s !== v));
 };
@@ -315,18 +344,23 @@ setTimeout(() => { if (document.body.classList.contains('boot')) show('auth'); }
 $('toggle').onclick = () => {
   signup = !signup;
   $('nm').classList.toggle('hidden', !signup);
+  $('mobRow').classList.toggle('hidden', !signup);
   applyLang();
   $('authMsg').textContent = '';
 };
 $('authForm').onsubmit = async e => {
   e.preventDefault();
   const c = { email: $('em').value, password: $('pw').value };
-  if (signup) c.options = { data: { full_name: $('nm').value }, emailRedirectTo: window.location.origin };
+  if (signup) {
+    const mobile = cleanMobile($('cc').value, $('mob').value);
+    if (!mobile) return $('authMsg').textContent = t('badMobile');
+    c.options = { data: { full_name: $('nm').value, mobile }, emailRedirectTo: window.location.origin };
+  }
   const { data, error } = signup ? await sb.auth.signUp(c) : await sb.auth.signInWithPassword(c);
   if (error) return $('authMsg').textContent = error.message;
   if (signup && !data.session) $('authMsg').textContent = t('check');
 };
-$('out').onclick = () => { store.set('view', ''); sb.auth.signOut(); };
+$('out').onclick = () => { store.set('view', ''); store.set('entered', ''); sb.auth.signOut(); };
 $('goMain').onclick = () => show('main');
 new Image().src = 'Main-2.jpg'; /* preload so the change is instant */
 { const eb = $('enterLib'), peek = on => document.body.classList.toggle('peek', on);
@@ -339,13 +373,14 @@ $('goAdmin').onclick = () => { show('admin'); tab('up'); loadChapters(); loadSta
 let shownUid = null;
 sb.auth.onAuthStateChange(async (_e, s) => {
   $('nav').classList.toggle('hidden', !s);
-  if (!s) { me = {}; bms = []; shownUid = null; return show('auth'); }
+  if (!s) { me = {}; bms = []; shownUid = null; store.set('entered', ''); return show('auth'); }
   /* Supabase re-fires this on token refresh and when the tab regains focus.
      If the same user is already signed in, do nothing so the current page (e.g. admin) stays put. */
   if (shownUid === s.user.id) return;
   shownUid = s.user.id;
   setTimeout(async () => {
     sb.rpc('touch_me');
+    sb.rpc('sync_my_mobile');
     const { data } = await sb.from('profiles').select('*').eq('id', s.user.id).single();
     me = data || {};
     $('goAdmin').classList.toggle('hidden', !me.is_admin);
@@ -1012,7 +1047,7 @@ async function loadMembers() {
       onclick: async () => { await sb.from('profiles').update({ approved: !u.approved }).eq('id', u.id); loadMembers(); } });
     const rol = h('button', { className: 'link', textContent: u.is_admin ? 'Admin (remove)' : 'Member (make admin)', disabled: self,
       onclick: async () => { await sb.from('profiles').update({ is_admin: !u.is_admin }).eq('id', u.id); loadMembers(); } });
-    return h('tr', {}, h('td', { textContent: u.full_name || '-' }), h('td', { textContent: u.email }),
+    return h('tr', {}, h('td', { textContent: u.full_name || '-' }), h('td', { textContent: u.email }), h('td', { textContent: u.mobile || '-' }),
       h('td', { textContent: fmt(u.created_at) }), h('td', { textContent: fmt(u.last_seen) }), h('td', {}, acc), h('td', {}, rol));
   }));
 }
