@@ -52,7 +52,7 @@ audio{width:100%;height:40px}
 #bar .nowp{font:1.15rem Inter,'Noto Serif Gujarati',serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:30%}
 #bar audio{flex:1;min-width:0}
 #bar .tctl{display:flex;align-items:center;gap:6px;white-space:nowrap;color:var(--mute);font-size:.9rem}
-#bar .spd{flex:none;width:auto;padding:4px 6px;font-size:.9rem}
+#bar .spd{flex:none;width:auto;min-width:3.2em;padding:4px 10px;font-size:.95rem;border:1px solid var(--line);border-radius:999px;text-align:center}
 #bar .tbtn{font-size:1.6rem;line-height:1;padding:0 6px}
 #bar .tbtn:disabled{opacity:.3;cursor:default}
 @media(max-width:600px){#bar .nowp{display:none}}
@@ -79,14 +79,17 @@ td{padding:12px 10px 12px 0;border-bottom:1px solid var(--line)}
 .pgbox input,.pgbox select,#timing .prev select{border:1px solid var(--line);padding:6px 8px;background:#fff}
 #timing .prev{display:flex;gap:14px;align-items:center}
 .pgbox{display:grid;grid-template-columns:70px 70px 100px 110px 1fr 1fr;gap:10px 14px;align-items:center;border-bottom:1px solid var(--line);padding:12px 0}
-.pgbox .c3{grid-column:2/5}
+.pgbox .subs{grid-column:1/-1;display:grid;grid-template-columns:70px 70px 100px 110px 1fr 1fr;gap:10px 14px;align-items:center}
+.pgbox .subs .plabel{grid-column:1/3}
+.pgbox .subs select{grid-column:3}
+.pgbox .subs .gocell{grid-column:5/7;display:flex;gap:20px;align-items:center}
+.pgbox .hint{grid-column:2/5}
 .pgbox .opts{grid-column:2/-1}
-.pgbox .hint{grid-column:2/-1;color:var(--gold);font-size:.85rem}
+.pgbox .hint{color:var(--gold);font-size:.85rem}
 .pgbox img{width:60px;height:80px;object-fit:cover;border:1px solid var(--line)}
 .pgbox .act{background:none;border:0;border-bottom:1px solid transparent;padding:0;margin:0;cursor:pointer;color:var(--mute);font:300 16px/1.7 Inter,'Noto Sans Gujarati',sans-serif;letter-spacing:normal;text-align:left;justify-self:start;white-space:nowrap;-webkit-appearance:none;appearance:none}
 .pgbox .act:hover,.pgbox .act:focus-visible{color:var(--gold);border-bottom-color:var(--gold)}
-.pgbox .plabel{grid-column:1/3;white-space:nowrap}
-.pgbox .plabel+select{grid-column:3}
+.pgbox .plabel{white-space:nowrap}
 .pgbox .pickl{border:0;border-bottom:1px solid transparent;background:none;color:var(--mute);cursor:pointer;padding:0;font:inherit;justify-self:start;max-width:100%}
 .pgbox .pickl:hover{color:var(--gold);border-bottom-color:var(--gold)}
 .pgbox .pickl option{color:var(--ink);background:#fff}
@@ -94,7 +97,7 @@ td{padding:12px 10px 12px 0;border-bottom:1px solid var(--line)}
 .chip{color:var(--mute)}
 .chip .act{padding:0 0 0 4px}
 .modenote{color:var(--gold);font-size:.9rem}
-@media(max-width:800px){#lib{grid-template-columns:1fr;gap:32px;padding-top:32px}.pgbox{grid-template-columns:60px 1fr}.pgbox>*{grid-column:auto!important}}
+@media(max-width:800px){#lib{grid-template-columns:1fr;gap:32px;padding-top:32px}.pgbox{grid-template-columns:60px 1fr}.pgbox>*,.pgbox .subs>*{grid-column:auto!important}.pgbox .subs{grid-template-columns:60px 1fr}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 body.home{background:linear-gradient(rgba(18,20,43,.6),rgba(18,20,43,.9)),url(Cover.jpg) center/cover fixed no-repeat}
 body.home header{border-color:transparent}
@@ -358,7 +361,9 @@ async function openChapter(ch) {
   stopBar();
   const parts = [h('h2', { textContent: ttl(ch) })];
   /* page-by-page mode: pages have their own track lists. timed mode: one audio, pages appear at set times. */
-  const lists = list.map(p => Array.isArray(p.track_nums) ? p.track_nums.filter(n => aurls[n - 1]) : []);
+  const keepR = p => Array.isArray(p.track_nums) ? p.track_nums.map((n, k) => k).filter(k => aurls[p.track_nums[k] - 1]) : [];
+  const lists = list.map(p => keepR(p).map(k => p.track_nums[k]));
+  const lstart = list.map(p => keepR(p).map(k => Number(p.track_times && p.track_times[k]) || 0));
   const playlist = lists.some(l => l.length);
   const timed = !playlist && aurls.length > 0 && list.some(p => p.start_time != null);
 
@@ -367,7 +372,7 @@ async function openChapter(ch) {
     const lab = h('span', { className: 'trk' });
     /* what plays, in order: every page's own tracks, page by page, or simply all tracks of the chapter */
     const q = [];
-    if (playlist) lists.forEach((l, pi) => l.forEach(tn => q.push({ tn, pi })));
+    if (playlist) lists.forEach((l, pi) => l.forEach((tn, k) => q.push({ tn, pi, st: lstart[pi][k] })));
     else aurls.forEach((_, i) => q.push({ tn: i + 1, pi: -1 }));
     const multi = q.length > 1;
     let ti = 0, sync = () => {};
@@ -376,6 +381,7 @@ async function openChapter(ch) {
     const setTrack = (i, play) => {
       if (i < 0 || i >= q.length) return;
       ti = i; au.src = aurls[q[i].tn - 1];
+      if (q[i].st > 0) { const t0 = q[i].st, go0 = () => { au.removeEventListener('loadedmetadata', go0); au.currentTime = t0; }; au.addEventListener('loadedmetadata', go0); }
       lab.textContent = 'Track ' + (i + 1) + ' / ' + q.length;
       prev.disabled = i === 0; next.disabled = i === q.length - 1;
       if (play) au.play().catch(() => {});
@@ -388,14 +394,11 @@ async function openChapter(ch) {
     let saved = 1; try { saved = parseFloat(localStorage.getItem('speed')) || 1; } catch (e) {}
     if (![0.75, 1, 1.25, 1.5, 1.75, 2].includes(saved)) saved = 1;
     au.defaultPlaybackRate = au.playbackRate = saved;
-    const spd = h('select', { className: 'spd', ariaLabel: 'Playback speed', title: 'Playback speed' },
-      ...[0.75, 1, 1.25, 1.5, 1.75, 2].map(v => h('option', { value: v, textContent: v + 'x' })));
-    spd.value = saved;
-    spd.onchange = () => {
-      const v = parseFloat(spd.value);
-      au.defaultPlaybackRate = au.playbackRate = v;
-      try { localStorage.setItem('speed', v); } catch (e) {}
-    };
+    const SP = [0.75, 1, 1.25, 1.5, 1.75, 2];
+    const spd = h('button', { type: 'button', className: 'link spd', title: 'Playback speed (click to change)' });
+    const setSpd = v => { au.defaultPlaybackRate = au.playbackRate = v; spd.textContent = v + 'x'; spd.ariaLabel = 'Playback speed ' + v + 'x'; try { localStorage.setItem('speed', v); } catch (e) {} };
+    spd.onclick = () => setSpd(SP[(SP.indexOf(au.defaultPlaybackRate) + 1) % SP.length]);
+    setSpd(saved);
 
     $('bar').append(h('div', { className: 'in' }, h('span', { className: 'nowp', textContent: ttl(ch) }),
       multi ? h('span', { className: 'tctl' }, prev, lab, next) : '', au, spd));
@@ -624,16 +627,20 @@ async function openTiming(ch, st) {
   if (aurls.length) loadTrack(0);
 
   /* each page's own list of tracks (numbers from the chapter's uploaded tracks) */
-  const lists = list.map((p, i) => st && st.draft && st.draft[i] ? st.draft[i].list.slice()
-    : (Array.isArray(p.track_nums) ? p.track_nums.filter(n => n >= 1 && n <= tr.length) : []));
+  const keepIdx = p => Array.isArray(p.track_nums) ? p.track_nums.map((n, k) => k).filter(k => p.track_nums[k] >= 1 && p.track_nums[k] <= tr.length) : [];
+  const lists = list.map((p, i) => st && st.draft && st.draft[i] ? st.draft[i].list.slice() : keepIdx(p).map(k => p.track_nums[k]));
+  /* start time (m:ss text) for each audio in each page's list */
+  const times = list.map((p, i) => st && st.draft && st.draft[i] && st.draft[i].times ? st.draft[i].times.slice()
+    : keepIdx(p).map(k => fmtT(Number(p.track_times && p.track_times[k]) || 0)));
+  lists.forEach((l, i) => { while (times[i].length < l.length) times[i].push('0:00'); times[i].length = l.length; });
   const redraw = [];
   const renderAll = () => {
     redraw.forEach(f => f());
     modeNote.textContent = lists.some(l => l.length)
-      ? 'Page-by-page mode: each page plays its own tracks in order, then the next page follows. The page times below are not used.'
+      ? 'Page-by-page mode: each page plays its own audio in order, each starting at its own time, then the next page follows. The page start times in the top row of each page are not used.'
       : '';
   };
-  const capture = () => inputs.map((x, j) => ({ time: x.inp.value, track: x.tsel.value, list: lists[j].slice() }));
+  const capture = () => inputs.map((x, j) => ({ time: x.inp.value, track: x.tsel.value, list: lists[j].slice(), times: times[j].slice() }));
 
   const inputs = list.map((p, i) => {
     const dr = st && st.draft && st.draft[i];
@@ -646,16 +653,6 @@ async function openTiming(ch, st) {
     const go = h('button', { type: 'button', className: 'link act', textContent: 'Play from here', onclick: () => {
       let s = parseT(inp.value); if (Number.isNaN(s)) return; if (s == null) s = 0;
       loadTrack((+tsel.value || 1) - 1, () => { au.currentTime = s; au.play(); });
-    } });
-
-    /* sub-row under each page: same pattern as the page row (track, time, use current time, play from here) */
-    const ainp = h('input', { type: 'text', placeholder: 'm:ss', ariaLabel: `Page ${i + 1} audio start time`, value: '0:00' });
-    const asel = h('select', { ariaLabel: `Page ${i + 1} audio track` }, ...tr.map((_, k) => h('option', { value: k + 1, textContent: 'Track ' + (k + 1) })));
-    asel.value = (lists[i] && lists[i][0]) || 1;
-    const anow = h('button', { type: 'button', className: 'link act', textContent: 'Use current time', onclick: () => { if (pv < 0) return; ainp.value = fmtT(au.currentTime); asel.value = pv + 1; } });
-    const ago = h('button', { type: 'button', className: 'link act', textContent: 'Play from here', onclick: () => {
-      let s = parseT(ainp.value); if (Number.isNaN(s)) return; if (s == null) s = 0;
-      loadTrack((+asel.value || 1) - 1, () => { au.currentTime = s; au.play(); });
     } });
 
     const rem = h('button', { type: 'button', className: 'link act', textContent: 'Remove', title: 'Remove this page image',
@@ -675,11 +672,11 @@ async function openTiming(ch, st) {
         openTiming(chapters.find(c => c.id === ch.id) || ch, { draft: d, note: `Page ${i + 1} removed. Other unsaved edits are kept. Click "Save timings" to keep them.` });
       } });
 
-    /* under each page: the tracks that play for this page, one after the other */
-    const chips = h('span', { className: 'chips c3' });
+    /* under each page: its own audio list; every audio gets the same row pattern as the page row */
+    const subs = h('div', { className: 'subs' });
     const hint = h('span', { className: 'hint' });
     const opts = h('span', { className: 'chips opts hidden' }, ...tr.map((_, k) => h('button', { type: 'button', className: 'link act', textContent: 'Track ' + (k + 1),
-      onclick: () => { lists[i].push(k + 1); opts.classList.add('hidden'); renderAll(); } })));
+      onclick: () => { lists[i].push(k + 1); times[i].push('0:00'); opts.classList.add('hidden'); renderAll(); } })));
     const pick = h('button', { type: 'button', className: 'link act', textContent: '+ Pick an uploaded track',
       onclick: () => opts.classList.toggle('hidden') });
     const upl = h('button', { type: 'button', className: 'link act', textContent: '+ Upload new track',
@@ -688,20 +685,34 @@ async function openTiming(ch, st) {
         const before = tr.length;
         pickTracks(ch, s => { msg.textContent = s; }, () => {
           const ch2 = chapters.find(c => c.id === ch.id) || ch, n2 = tracksOf(ch2).length;
-          const d = capture(); for (let k = before + 1; k <= n2; k++) d[i].list.push(k);
-          openTiming(ch2, { draft: d, note: `Added to page ${i + 1}. Click "Save timings" to keep it.` });
+          const d = capture(); for (let k = before + 1; k <= n2; k++) { d[i].list.push(k); d[i].times.push('0:00'); }
+          openTiming(ch2, { draft: d, note: `Added to page ${i + 1}. Click \"Save timings\" to keep it.` });
         });
       } });
     redraw.push(() => {
-      chips.replaceChildren(...lists[i].map((n, k) => h('span', { className: 'chip' }, 'Track ' + n,
-        h('button', { type: 'button', className: 'link act', textContent: '\u00D7', ariaLabel: `Remove track ${n} from page ${i + 1}`,
-          onclick: () => { lists[i].splice(k, 1); renderAll(); } }))));
+      const rows = [];
+      lists[i].forEach((n, k) => {
+        const asel = h('select', { ariaLabel: `Page ${i + 1} audio ${k + 1} track` }, ...tr.map((_, j) => h('option', { value: j + 1, textContent: 'Track ' + (j + 1) })));
+        asel.value = n; asel.onchange = () => { lists[i][k] = +asel.value; };
+        const ainp = h('input', { type: 'text', placeholder: 'm:ss', ariaLabel: `Page ${i + 1} audio ${k + 1} start time`, value: times[i][k] });
+        ainp.oninput = () => { times[i][k] = ainp.value; };
+        const anow = h('button', { type: 'button', className: 'link act', textContent: 'Use current time', onclick: () => {
+          if (pv < 0) return; ainp.value = times[i][k] = fmtT(au.currentTime); asel.value = lists[i][k] = pv + 1; } });
+        const ago = h('button', { type: 'button', className: 'link act', textContent: 'Play from here', onclick: () => {
+          let t0 = parseT(ainp.value); if (Number.isNaN(t0)) return; if (t0 == null) t0 = 0;
+          loadTrack((+asel.value || 1) - 1, () => { au.currentTime = t0; au.play(); });
+        } });
+        const del = h('button', { type: 'button', className: 'link act', textContent: '\u00D7', title: 'Remove this audio', ariaLabel: `Remove audio ${k + 1} from page ${i + 1}`,
+          onclick: () => { lists[i].splice(k, 1); times[i].splice(k, 1); renderAll(); } });
+        rows.push(h('span', { className: 'plabel', textContent: k === 0 ? 'Page audio:' : '' }), asel, ainp, anow, h('span', { className: 'gocell' }, ago, del));
+      });
+      if (!rows.length) rows.push(h('span', { className: 'plabel', textContent: 'Page audio:' }), h('span', { className: 'note', textContent: 'none yet' }));
+      subs.replaceChildren(...rows);
       hint.textContent = lists.some(l => l.length) && !lists[i].length ? 'No audio on this page, so it is skipped while playing.' : '';
     });
     return { inp, tsel,
       row: h('div', { className: 'pgbox' }, thumb, h('span', { textContent: `Page ${i + 1}` }), tr.length ? tsel : h('span'), inp, now, go,
-        h('span', { className: 'plabel', textContent: 'Page audio:' }), tr.length ? asel : h('span'), ainp, anow, ago,
-        rem, chips, tr.length ? pick : h('span'), upl, opts, hint) };
+        subs, rem, hint, tr.length ? pick : h('span'), upl, opts) };
   });
   renderAll();
   if (st && st.note) msg.textContent = st.note;
@@ -718,11 +729,14 @@ async function openTiming(ch, st) {
         prevKey = key; prevPage = i + 1;
       }
     }
+    const atimes = times.map(arr => arr.map(x => parseT(x)));
+    if (atimes.some(arr => arr.some(v => Number.isNaN(v)))) return msg.textContent = 'Use the format m:ss for audio start times, for example 1:25.';
+    atimes.forEach((arr, i) => arr.forEach((v, k) => { if (v == null) arr[k] = 0; }));
     msg.textContent = 'Saving...';
     const res = await Promise.all(list.map((p, i) =>
-      sb.from('pages').update({ start_time: vals[i], track: tr.length ? trs[i] : null, track_nums: lists[i].length ? lists[i] : null }).eq('chapter_id', ch.id).eq('position', p.position).select()));
+      sb.from('pages').update({ start_time: vals[i], track: tr.length ? trs[i] : null, track_nums: lists[i].length ? lists[i] : null, track_times: lists[i].length ? atimes[i] : null }).eq('chapter_id', ch.id).eq('position', p.position).select()));
     const err = res.find(r => r.error);
-    if (err) msg.textContent = 'Save failed: ' + err.error.message;
+    if (err) msg.textContent = 'Save failed: ' + err.error.message + (/track_times/.test(err.error.message) ? ' Run once in Supabase SQL editor: alter table pages add column if not exists track_times jsonb;' : '');
     else if (res.some(r => !r.data || !r.data.length)) msg.textContent = 'Nothing was saved. Check that the start_time, track and track_nums columns and the admin update policy exist (see setup SQL).';
     else msg.textContent = 'Saved.';
   } });
