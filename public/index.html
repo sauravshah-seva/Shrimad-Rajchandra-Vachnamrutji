@@ -96,7 +96,11 @@ body.home #bookTitle,body.home #bookTag,body.home .brand{display:none}
 header .right{display:flex;gap:22px;align-items:center;margin-left:auto}
 </style>
 </head>
-<body class="boot">
+<body>
+<script>
+/* Runs before anything paints: signed-in visitors see a blank page until the library is ready; guests see the cover at once */
+try{var k=Object.keys(localStorage).some(function(x){return /^sb-.*-auth-token$/.test(x)});document.body.classList.add(k?'boot':'home')}catch(e){document.body.classList.add('home')}
+</script>
 <div class="wrap">
 <header>
   <div class="brand" id="brand"></div>
