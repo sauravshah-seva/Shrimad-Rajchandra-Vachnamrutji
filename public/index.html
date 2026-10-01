@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Shrimad Rajchandra Vachnamrutji</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Noto+Sans+Gujarati:wght@300;400&family=Noto+Serif+Gujarati:wght@300;400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Noto+Sans+Gujarati:wght@300;400&family=Noto+Serif+Gujarati:wght@300;400;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <style>
 :root{--bg:#fff;--panel:#f7f5f0;--ink:#1c1e3a;--mute:#6b6e8a;--gold:#a6853c;--line:rgba(166,133,60,.3)}
@@ -141,6 +141,21 @@ body.home:not(.dim) #authForm input::placeholder{color:#fff}
 #toc li button[aria-current=true]{padding-left:calc(26px + (var(--d,1) - 1)*20px)}
 #toc li button[data-d="2"]{font-size:1.05rem}#toc li button[data-d="3"]{font-size:.95rem}
 header .right{display:flex;gap:22px;align-items:center;margin-left:auto}
+
+/* main page shown after sign-in */
+body.mainpg{background:url(Main-1.jpg) center/cover fixed no-repeat}
+body.mainpg header{border-color:transparent}
+body.mainpg .brand{display:none}
+body.mainpg header .link{color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.7)}
+body.mainpg header .link:hover{border-color:#fff}
+#main{min-height:calc(100vh - 100px);display:grid;place-items:center;text-align:center;padding:20px 0 60px}
+#main .verse{padding:36px 32px;background:radial-gradient(closest-side,rgba(0,0,0,.38),rgba(0,0,0,0));animation:vfade 1s ease both}
+@keyframes vfade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+#main p{font-family:'Noto Serif Gujarati',serif;font-weight:700;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.65),0 0 2px rgba(0,0,0,.6);line-height:1.7}
+#main .om{font-size:clamp(2.6rem,6vw,4rem);line-height:1.2;margin-bottom:10px}
+#main .st{font-size:clamp(1.25rem,2.8vw,2rem);margin-bottom:22px}
+#main .btn{margin-top:14px;border-color:#fff;color:#fff;background:rgba(0,0,0,.25);text-shadow:0 1px 3px rgba(0,0,0,.6)}
+#main .btn:hover{background:#fff;color:var(--ink);text-shadow:none}
 </style>
 </head>
 <body>
@@ -153,6 +168,7 @@ try{var k=Object.keys(localStorage).some(function(x){return /^sb-.*-auth-token$/
   <div class="brand" id="brand"></div>
   <div class="right">
     <nav id="nav" class="hidden">
+      <button class="link" id="goMain" data-i="home">Home</button>
       <button class="link" id="goLib" data-i="library">Library</button>
       <button class="link hidden" id="goAdmin" data-i="admin">Admin</button>
       <button class="link" id="out" data-i="out">Sign out</button>
@@ -172,6 +188,17 @@ try{var k=Object.keys(localStorage).some(function(x){return /^sb-.*-auth-token$/
       <button type="button" class="link" id="toggle">New here? Create an account</button>
       <div class="msg" id="authMsg" role="status"></div>
     </form>
+  </div>
+</section>
+
+<section id="main" class="hidden">
+  <div class="verse">
+    <p class="om">ૐ</p>
+    <p class="st">અહો!<br>સર્વોત્કૃષ્ટ શાંત રસમય સન્માર્ગ</p>
+    <p class="st">અહો!<br>તે સર્વોત્કૃષ્ટ શાંતરસપ્રધાન<br>માર્ગના મૂળ સર્વજ્ઞદેવ</p>
+    <p class="st">અહો!<br>તે સર્વોત્કૃષ્ટ શાંતરસ સુપ્રતીત<br>કરાવ્યો એવા પરમ કૃપાળુ<br>સદ્ગુરુદેવ</p>
+    <p class="st">આ વિશ્વમાં સર્વકાળ તમે<br>જયવંત વર્તો, જયવંત વર્તો</p>
+    <button type="button" class="btn" id="enterLib">Enter Library</button>
   </div>
 </section>
 
@@ -237,7 +264,7 @@ $('bookTag').textContent = BOOK.tagline;
 
 /* Interface text is English only. Only chapter titles (the index) are Gujarati. */
 const T = {
-  library: 'Library', admin: 'Admin', out: 'Sign out', contents: 'Contents', choose: 'Choose a chapter to begin.',
+  library: 'Library', home: 'Home', admin: 'Admin', out: 'Sign out', contents: 'Contents', choose: 'Choose a chapter to begin.',
   name: 'Your name', email: 'Email', pass: 'Password (6+ characters)', signin: 'Sign in', create: 'Create account',
   'new': 'New here? Create an account', have: 'Already registered? Sign in',
   check: 'Check your email to confirm, then sign in.', paused: 'Your access is paused. Please contact the administrator.',
@@ -257,7 +284,8 @@ const show = v => {
   document.body.classList.remove('boot');
   if (v !== 'lib') stopBar();
   document.body.classList.toggle('home', v === 'auth');
-  ['auth', 'lib', 'admin'].forEach(s => $(s).classList.toggle('hidden', s !== v));
+  document.body.classList.toggle('mainpg', v === 'main');
+  ['auth', 'main', 'lib', 'admin'].forEach(s => $(s).classList.toggle('hidden', s !== v));
 };
 
 /* safety net: if the sign-in check never answers, show the sign-in page */
@@ -287,7 +315,9 @@ $('authForm').onsubmit = async e => {
   if (error) return $('authMsg').textContent = error.message;
   if (signup && !data.session) $('authMsg').textContent = t('check');
 };
-$('out').onclick = () => sb.auth.signOut();
+$('out').onclick = () => { store.set('view', ''); sb.auth.signOut(); };
+$('goMain').onclick = () => show('main');
+$('enterLib').onclick = () => { show('lib'); loadChapters().then(loadBookmarks); };
 $('goLib').onclick = () => { show('lib'); loadChapters(); };
 $('goAdmin').onclick = () => { show('admin'); tab('up'); loadChapters(); loadStats(); };
 
@@ -304,8 +334,9 @@ sb.auth.onAuthStateChange(async (_e, s) => {
     const { data } = await sb.from('profiles').select('*').eq('id', s.user.id).single();
     me = data || {};
     $('goAdmin').classList.toggle('hidden', !me.is_admin);
-    if (me.is_admin && store.get('view') === 'admin') { show('admin'); tab(store.get('atab') || 'up'); loadChapters(); loadStats(); return; }
-    show('lib');
+    const back = _e === 'INITIAL_SESSION' ? store.get('view') : '';   /* a page reload returns to where the user was; a fresh sign-in shows the main page */
+    if (me.is_admin && back === 'admin') { show('admin'); tab(store.get('atab') || 'up'); loadChapters(); loadStats(); return; }
+    show(back === 'lib' ? 'lib' : 'main');
     if (!me.approved && !me.is_admin) $('reader').replaceChildren(h('p', { className: 'empty', textContent: t('paused') }));
     else loadChapters().then(loadBookmarks);
   });
