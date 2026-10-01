@@ -73,11 +73,19 @@ td{padding:12px 10px 12px 0;border-bottom:1px solid var(--line)}
 #timing{border:1px solid var(--line);padding:22px;margin-bottom:36px;background:var(--panel);display:grid;gap:14px}
 #timing h3{font-size:1.6rem}
 #timing .note{color:var(--mute);font-size:.9rem}
-.trow{display:grid;grid-template-columns:70px 70px 100px 110px auto auto auto;gap:14px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.trow{display:grid;grid-template-columns:70px 70px 100px 110px auto auto;gap:14px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
 .trow img{width:60px;height:80px;object-fit:cover;border:1px solid var(--line)}
 .trow input,.trow select,#timing .prev select{border:1px solid var(--line);padding:6px 8px;background:#fff}
 #timing .prev{display:flex;gap:14px;align-items:center}
-@media(max-width:800px){#lib{grid-template-columns:1fr;gap:32px;padding-top:32px}.trow{grid-template-columns:60px 1fr;}}
+.pgbox{border-bottom:1px solid var(--line);padding:4px 0 12px}
+.pgbox .trow{border-bottom:0}
+.tlist{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;padding-left:84px;font-size:.9rem;color:var(--mute)}
+.tlist select{border:1px solid var(--line);padding:4px 8px;background:#fff}
+.chips{display:inline-flex;gap:8px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:#fff;padding:1px 6px 1px 10px;border-radius:14px;color:var(--ink)}
+.chip .link{font-size:1.1rem;padding:0 4px}
+.modenote{color:var(--gold);font-size:.9rem}
+@media(max-width:800px){#lib{grid-template-columns:1fr;gap:32px;padding-top:32px}.trow{grid-template-columns:60px 1fr;}.tlist{padding-left:0}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 body.home{background:linear-gradient(rgba(18,20,43,.6),rgba(18,20,43,.9)),url(Cover.jpg) center/cover fixed no-repeat}
 body.home header{border-color:transparent}
@@ -332,40 +340,59 @@ async function openChapter(ch) {
 
   stopBar();
   const parts = [h('h2', { textContent: ttl(ch) })];
-  /* timed mode: audio exists and the admin has set at least one page time */
-  const timed = aurls.length > 0 && list.some(p => p.start_time != null);
+  /* page-by-page mode: pages have their own track lists. timed mode: one audio, pages appear at set times. */
+  const lists = list.map(p => Array.isArray(p.track_nums) ? p.track_nums.filter(n => aurls[n - 1]) : []);
+  const playlist = lists.some(l => l.length);
+  const timed = !playlist && aurls.length > 0 && list.some(p => p.start_time != null);
 
   if (aurls.length) {
     const au = h('audio', { controls: true, preload: 'metadata' });
     const lab = h('span', { className: 'trk' });
-    const multi = aurls.length > 1;
+    /* what plays, in order: every page's own tracks, page by page, or simply all tracks of the chapter */
+    const q = [];
+    if (playlist) lists.forEach((l, pi) => l.forEach(tn => q.push({ tn, pi })));
+    else aurls.forEach((_, i) => q.push({ tn: i + 1, pi: -1 }));
+    const multi = q.length > 1;
     let ti = 0, sync = () => {};
     const prev = h('button', { type: 'button', className: 'link tbtn', textContent: '\u2039', ariaLabel: 'Previous track', onclick: () => setTrack(ti - 1, true) });
     const next = h('button', { type: 'button', className: 'link tbtn', textContent: '\u203A', ariaLabel: 'Next track', onclick: () => setTrack(ti + 1, true) });
     const setTrack = (i, play) => {
-      if (i < 0 || i >= aurls.length) return;
-      ti = i; au.src = aurls[i];
-      lab.textContent = 'Track ' + (i + 1) + ' / ' + aurls.length;
-      prev.disabled = i === 0; next.disabled = i === aurls.length - 1;
+      if (i < 0 || i >= q.length) return;
+      ti = i; au.src = aurls[q[i].tn - 1];
+      lab.textContent = 'Track ' + (i + 1) + ' / ' + q.length;
+      prev.disabled = i === 0; next.disabled = i === q.length - 1;
       if (play) au.play().catch(() => {});
       sync();
     };
     /* when a track finishes, continue with the next one */
-    au.addEventListener('ended', () => { if (ti < aurls.length - 1) setTrack(ti + 1, true); });
+    au.addEventListener('ended', () => { if (ti < q.length - 1) setTrack(ti + 1, true); });
 
     $('bar').append(h('div', { className: 'in' }, h('span', { className: 'nowp', textContent: ttl(ch) }),
       multi ? h('span', { className: 'tctl' }, prev, lab, next) : '', au));
     $('bar').classList.remove('hidden');
     document.body.classList.add('hasbar');
 
-    if (timed) {
+    if (playlist) {
+      const img = h('img'), no = h('div', { className: 'pgno' });
+      parts.push(h('div', { className: 'stage' }, img, no));
+      let shown = -1;
+      sync = () => {
+        const pi = q[ti].pi;
+        if (pi === shown) return;
+        const first = shown === -1; shown = pi;
+        img.src = urls[pi] || ''; img.alt = `${ttl(ch)}, page ${pi + 1}`;
+        no.textContent = `${pi + 1} / ${list.length}`;
+        if (urls[pi + 1]) new Image().src = urls[pi + 1];
+        if (!first) window.scrollTo({ top: 0, behavior: 'smooth' });
+      };
+    } else if (timed) {
       const trk = list.map(p => p.track || 1);
       const starts = list.map((p, i) => p.start_time != null ? Number(p.start_time) : (i === 0 ? 0 : Infinity));
       const img = h('img'), no = h('div', { className: 'pgno' });
       parts.push(h('div', { className: 'stage' }, img, no));
       let shown = -1;
       sync = () => {
-        const now = au.currentTime, cur = ti + 1; let idx = 0;
+        const now = au.currentTime, cur = q[ti].tn; let idx = 0;
         starts.forEach((s, i) => { if (Number.isFinite(s) && (trk[i] < cur || (trk[i] === cur && s <= now))) idx = i; });
         if (idx === shown) return;
         const first = shown === -1; shown = idx;
@@ -379,7 +406,7 @@ async function openChapter(ch) {
     setTrack(0, false);
   }
 
-  if (!timed && list.length) {
+  if (!timed && !playlist && list.length) {
     const box = h('div', { className: 'pages' });
     urls.forEach((src, i) => box.append(h('img', { alt: `${ttl(ch)}, page ${i + 1}`, loading: 'lazy', src })));
     parts.push(box);
@@ -551,11 +578,12 @@ async function openTiming(ch, st) {
   const au = h('audio', { controls: true, preload: 'metadata' });
   const msg = h('div', { className: 'msg', role: 'status' });
   const pvLab = h('span', { className: 'note' });
+  const modeNote = h('div', { className: 'modenote' });
 
   /* preview player: "Play from here" on a page loads that page's track */
   let pv = -1;
   const loadTrack = (i, then) => {
-    if (!aurls[i]) { msg.textContent = 'There is no audio on this track yet. Use "+ Add track" on a page.'; return; }
+    if (!aurls[i]) { msg.textContent = 'There is no audio on this track yet. Use "+ Upload new track" under a page.'; return; }
     pvLab.textContent = 'Playing: Track ' + (i + 1);
     if (pv === i && au.readyState > 0) { if (then) then(); return; }
     pv = i;
@@ -564,46 +592,80 @@ async function openTiming(ch, st) {
   };
   if (aurls.length) loadTrack(0);
 
+  /* each page's own list of tracks (numbers from the chapter's uploaded tracks) */
+  const lists = list.map((p, i) => st && st.draft && st.draft[i] ? st.draft[i].list.slice()
+    : (Array.isArray(p.track_nums) ? p.track_nums.filter(n => n >= 1 && n <= tr.length) : []));
+  const redraw = [];
+  const renderAll = () => {
+    redraw.forEach(f => f());
+    modeNote.textContent = lists.some(l => l.length)
+      ? 'Page-by-page mode: each page plays its own tracks in order, then the next page follows. The page times below are not used.'
+      : '';
+  };
+  const capture = () => inputs.map((x, j) => ({ time: x.inp.value, track: x.tsel.value, list: lists[j].slice() }));
+
   const inputs = list.map((p, i) => {
     const dr = st && st.draft && st.draft[i];
     const inp = h('input', { type: 'text', placeholder: 'm:ss', ariaLabel: `Page ${i + 1} start time`,
       value: dr ? dr.time : (p.start_time != null ? fmtT(p.start_time) : (i === 0 ? '0:00' : '')) });
     const tsel = h('select', { ariaLabel: `Page ${i + 1} track` }, ...tr.map((_, k) => h('option', { value: k + 1, textContent: 'Track ' + (k + 1) })));
     tsel.value = dr ? dr.track : Math.min(p.track || 1, tr.length);
-    if (st && st.i === i) { tsel.value = st.track; inp.value = '0:00'; }
     const thumb = h('img', { alt: `Page ${i + 1}`, src: (u && u[i] && u[i].signedUrl) || '' });
     const now = h('button', { type: 'button', className: 'link', textContent: 'Use current time', onclick: () => { if (pv < 0) return; inp.value = fmtT(au.currentTime); tsel.value = pv + 1; } });
     const go = h('button', { type: 'button', className: 'link', textContent: 'Play from here', onclick: () => {
       let s = parseT(inp.value); if (Number.isNaN(s)) return; if (s == null) s = 0;
       loadTrack((+tsel.value || 1) - 1, () => { au.currentTime = s; au.play(); });
     } });
-    /* add a new audio track for this page: the page will start on it */
-    const addT = h('button', { type: 'button', className: 'link', textContent: '+ Add track',
-      title: 'Upload audio as the next track. This page will start on it.',
+
+    /* under each page: the tracks that play for this page, one after the other */
+    const chips = h('span', { className: 'chips' });
+    const hint = h('span', {});
+    const pick = h('select', { ariaLabel: `Add an uploaded track to page ${i + 1}` },
+      h('option', { value: '', textContent: '+ Pick an uploaded track' }),
+      ...tr.map((_, k) => h('option', { value: k + 1, textContent: 'Track ' + (k + 1) })));
+    pick.onchange = () => { if (pick.value) { lists[i].push(+pick.value); pick.value = ''; renderAll(); } };
+    const upl = h('button', { type: 'button', className: 'link', textContent: '+ Upload new track',
+      title: 'Upload audio and add it to this page',
       onclick: () => {
-        const draft = inputs.map(x => ({ time: x.inp.value, track: x.tsel.value }));
-        pickTracks(ch, s => { msg.textContent = s; }, () => openTiming(chapters.find(c => c.id === ch.id) || ch, { draft, i, track: tr.length + 1 }));
+        const before = tr.length;
+        pickTracks(ch, s => { msg.textContent = s; }, () => {
+          const ch2 = chapters.find(c => c.id === ch.id) || ch, n2 = tracksOf(ch2).length;
+          const d = capture(); for (let k = before + 1; k <= n2; k++) d[i].list.push(k);
+          openTiming(ch2, { draft: d, note: `Added to page ${i + 1}. Click "Save timings" to keep it.` });
+        });
       } });
-    return { inp, tsel, row: h('div', { className: 'trow' }, thumb, h('span', { textContent: `Page ${i + 1}` }), tr.length ? tsel : h('span'), inp, now, go, addT) };
+    redraw.push(() => {
+      chips.replaceChildren(...lists[i].map((n, k) => h('span', { className: 'chip' }, 'Track ' + n,
+        h('button', { type: 'button', className: 'link', textContent: '\u00D7', ariaLabel: `Remove track ${n} from page ${i + 1}`,
+          onclick: () => { lists[i].splice(k, 1); renderAll(); } }))));
+      hint.textContent = lists.some(l => l.length) && !lists[i].length ? 'No audio on this page, so it is skipped while playing.' : '';
+    });
+    return { inp, tsel,
+      row: h('div', { className: 'pgbox' },
+        h('div', { className: 'trow' }, thumb, h('span', { textContent: `Page ${i + 1}` }), tr.length ? tsel : h('span'), inp, now, go),
+        h('div', { className: 'tlist' }, h('span', { textContent: 'Page audio:' }), chips, tr.length ? pick : '', upl, hint)) };
   });
-  if (st) msg.textContent = `Track added. Page ${st.i + 1} now starts on Track ${st.track} at 0:00. Click "Save timings" to keep it.`;
+  renderAll();
+  if (st && st.note) msg.textContent = st.note;
 
   const save = h('button', { className: 'btn', textContent: 'Save timings', onclick: async () => {
     const vals = inputs.map(x => parseT(x.inp.value)), trs = inputs.map(x => +x.tsel.value || 1);
     if (vals.some(v => Number.isNaN(v))) return msg.textContent = 'Use the format m:ss, for example 1:25.';
-    let prevKey = -1, prevPage = 0;
-    for (let i = 0; i < vals.length; i++) {
-      if (vals[i] == null) continue;
-      const key = trs[i] * 1e7 + vals[i];
-      if (key < prevKey) return msg.textContent = `Page ${i + 1} is set earlier than page ${prevPage}. Times must increase from page to page, and tracks must stay in order.`;
-      prevKey = key; prevPage = i + 1;
+    if (!lists.some(l => l.length)) { /* times only matter when no page has its own track list */
+      let prevKey = -1, prevPage = 0;
+      for (let i = 0; i < vals.length; i++) {
+        if (vals[i] == null) continue;
+        const key = trs[i] * 1e7 + vals[i];
+        if (key < prevKey) return msg.textContent = `Page ${i + 1} is set earlier than page ${prevPage}. Times must increase from page to page, and tracks must stay in order.`;
+        prevKey = key; prevPage = i + 1;
+      }
     }
     msg.textContent = 'Saving...';
     const res = await Promise.all(list.map((p, i) =>
-      sb.from('pages').update({ start_time: vals[i], track: tr.length ? trs[i] : null }).eq('chapter_id', ch.id).eq('position', p.position).select()));
+      sb.from('pages').update({ start_time: vals[i], track: tr.length ? trs[i] : null, track_nums: lists[i].length ? lists[i] : null }).eq('chapter_id', ch.id).eq('position', p.position).select()));
     const err = res.find(r => r.error);
     if (err) msg.textContent = 'Save failed: ' + err.error.message;
-    else if (res.some(r => !r.data || !r.data.length)) msg.textContent = 'Nothing was saved. Check that the start_time and track columns and the admin update policy exist (see setup SQL).';
+    else if (res.some(r => !r.data || !r.data.length)) msg.textContent = 'Nothing was saved. Check that the start_time, track and track_nums columns and the admin update policy exist (see setup SQL).';
     else msg.textContent = 'Saved.';
   } });
   const close = h('button', { type: 'button', className: 'link', textContent: 'Close', onclick: () => { au.pause(); box.classList.add('hidden'); box.replaceChildren(); } });
@@ -611,20 +673,28 @@ async function openTiming(ch, st) {
   /* undo the most recent upload */
   const last = tr[tr.length - 1];
   const removeLast = last ? h('button', { type: 'button', className: 'link', textContent: 'Remove last track', onclick: async () => {
-    if (!confirm(`Remove track ${tr.length} and its audio file? Pages timed to that track will need new times.`)) return;
+    if (!confirm(`Remove track ${tr.length} and its audio file? It will also be taken off any page that uses it.`)) return;
     const r = last.id ? await sb.from('tracks').delete().eq('id', last.id) : await sb.from('chapters').update({ audio_path: null }).eq('id', ch.id);
     if (r.error) return msg.textContent = 'Could not remove: ' + r.error.message;
     await sb.storage.from(B).remove([last.audio_path]);
     await sb.from('pages').update({ track: null, start_time: null }).eq('chapter_id', ch.id).eq('track', tr.length);
+    const { data: pp } = await sb.from('pages').select('position,track_nums').eq('chapter_id', ch.id);
+    for (const x of (pp || [])) {
+      if (Array.isArray(x.track_nums) && x.track_nums.includes(tr.length)) {
+        const nl = x.track_nums.filter(n => n !== tr.length);
+        await sb.from('pages').update({ track_nums: nl.length ? nl : null }).eq('chapter_id', ch.id).eq('position', x.position);
+      }
+    }
     await loadChapters(); loadStats();
     openTiming(chapters.find(c => c.id === ch.id) || ch);
   } }) : '';
 
   box.replaceChildren(
     h('h3', { textContent: 'Pages & audio: ' + ch.title }),
-    h('p', { className: 'note', textContent: 'Play the audio. When a page should appear, click "Use current time" on that page, or type the time as m:ss. To give a page its own audio, click "+ Add track" on that page: the file is added after the existing tracks and the page starts on it. When one track ends, the next one plays automatically. Page 1 starts at 0:00. Leave later pages blank to skip them.' }),
-    h('div', { className: 'note' }, ...(tr.length ? tr.map((x, i) => h('div', { textContent: `Track ${i + 1}: ${x.audio_path.split('/').pop().replace(/^audio-(\d+-)*/, '')}` })) : [h('div', { textContent: 'No audio yet.' })])),
+    h('p', { className: 'note', textContent: 'Under each page, build its audio: pick a track you already uploaded, or upload a new one. Tracks on a page play one after the other, then the next page begins. Alternatively, leave the page audio empty and use the times: play one long track and click "Use current time" when each page should appear.' }),
+    h('div', { className: 'note' }, ...(tr.length ? tr.map((x, i) => h('div', { textContent: `Track ${i + 1}: ${x.audio_path.split('/').pop().replace(/^audio-(\d+-)*/, '')}` })) : [h('div', { textContent: 'No audio uploaded yet.' })])),
     h('div', { className: 'prev' }, au, pvLab),
+    modeNote,
     ...(list.length ? inputs.map(x => x.row) : [h('p', { className: 'note', textContent: 'This chapter has no pages yet. Upload page images first.' })]),
     h('div', { style: 'display:flex;gap:24px;align-items:center;flex-wrap:wrap' }, save, close, removeLast),
     msg
