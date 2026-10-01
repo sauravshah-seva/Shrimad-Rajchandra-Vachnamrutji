@@ -223,7 +223,9 @@ function applyLang() {
   $('toggle').textContent = t(signup ? 'have' : 'new');
 }
 applyLang();
+const store = { get: k => { try { return sessionStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { sessionStorage.setItem(k, v); } catch (e) {} } };
 const show = v => {
+  if (v !== 'auth') store.set('view', v);
   document.body.classList.remove('boot');
   if (v !== 'lib') stopBar();
   document.body.classList.toggle('home', v === 'auth');
@@ -265,6 +267,7 @@ sb.auth.onAuthStateChange(async (_e, s) => {
     const { data } = await sb.from('profiles').select('*').eq('id', s.user.id).single();
     me = data || {};
     $('goAdmin').classList.toggle('hidden', !me.is_admin);
+    if (me.is_admin && store.get('view') === 'admin') { show('admin'); tab(store.get('atab') || 'up'); loadChapters(); loadStats(); return; }
     show('lib');
     if (!me.approved && !me.is_admin) $('reader').replaceChildren(h('p', { className: 'empty', textContent: t('paused') }));
     else loadChapters();
@@ -431,6 +434,7 @@ async function openChapter(ch) {
 
 /* ---------- admin: tabs & stats ---------- */
 function tab(t) {
+  store.set('atab', t);
   ['up', 'ch', 'mem'].forEach(x => $('p-' + x).classList.toggle('hidden', x !== t));
   document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-current', b.dataset.t === t));
   if (t === 'mem') loadMembers();
