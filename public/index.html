@@ -27,7 +27,7 @@ nav{display:flex;gap:22px;color:var(--mute);font-size:.9rem}
 #auth h1{font-size:clamp(2.6rem,7vw,4.8rem);line-height:1.1;margin-bottom:12px}
 .sub{color:var(--mute);max-width:36ch;margin:0 auto 40px;font:1.3rem Inter,'Noto Serif Gujarati',serif}
 form{display:grid;gap:18px;max-width:320px;margin:0 auto;text-align:left}
-input[type=email],input[type=password],input[type=text]{background:none;border:0;border-bottom:1px solid var(--line);padding:10px 2px;width:100%}
+input[type=email],input[type=password],input[type=text],input[type=tel]{background:none;border:0;border-bottom:1px solid var(--line);padding:10px 2px;width:100%}
 input::placeholder{color:#6d7091}
 .btn{background:none;border:1px solid var(--gold);color:var(--gold);padding:12px 28px;cursor:pointer;letter-spacing:.12em;transition:.3s}
 .btn:hover{background:var(--gold);color:var(--bg)}
@@ -129,7 +129,7 @@ body.home header{border-color:transparent}
 body.home #auth{align-items:end;min-height:calc(100vh - 100px);padding-bottom:22vh}
 body.home #bookTitle,body.home #bookTag,body.home .brand{display:none}
 #authForm{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;align-items:end;padding:14px 18px 10px;max-width:580px;width:100%;background:rgba(255,255,255,.07);color:#fff;border-radius:8px;border:1px solid rgba(255,255,255,.28);backdrop-filter:blur(24px) saturate(150%);-webkit-backdrop-filter:blur(24px) saturate(150%);box-shadow:0 16px 40px -20px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.25)}
-#authForm #nm,#authForm .btn,#authForm .link,#authForm .msg{grid-column:1/-1}
+#authForm #nm,#authForm #ph,#authForm .btn,#authForm .link,#authForm .msg{grid-column:1/-1}
 @media(max-width:600px){#authForm{grid-template-columns:1fr}}
 #authForm{transition:background-color .45s ease,box-shadow .45s ease,border-color .45s ease,backdrop-filter .45s ease,-webkit-backdrop-filter .45s ease}
 /* at rest: the cover is shown fully, with no dimming, tint or blur anywhere on it */
@@ -180,25 +180,29 @@ body.mainpg header .link:hover{border-color:#fff}
 #main .btn:hover{background:#fff;color:var(--ink);text-shadow:none}
 
 /* =====================================================================
-   MOBILE + TABLET: works in portrait and landscape
+   MOBILE + TABLET: portrait and landscape
    (everything below only adds to / overrides the rules above)
    ===================================================================== */
 
 /* --- all screens --- */
-html{-webkit-text-size-adjust:100%;text-size-adjust:100%}      /* stops iPhones inflating text in landscape */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 body{overflow-x:hidden;min-height:100vh;min-height:100dvh}
 img,video,canvas,svg{max-width:100%}
 button,.btn,.link{touch-action:manipulation}
-.wrap{padding-left:max(24px,env(safe-area-inset-left));padding-right:max(24px,env(safe-area-inset-right))}  /* keeps content clear of the notch in landscape */
+.wrap{padding-left:max(24px,env(safe-area-inset-left));padding-right:max(24px,env(safe-area-inset-right))}
 #bar{padding-left:max(24px,env(safe-area-inset-left));padding-right:max(24px,env(safe-area-inset-right))}
 #toc,#reader{min-width:0}
 #toc li button{overflow-wrap:anywhere}
 #reader{scroll-margin-top:12px}
+#reader h2,.empty{overflow-wrap:anywhere}
 header{flex-wrap:wrap;gap:8px 16px}
 header .right{min-width:0}
 nav{flex-wrap:wrap;gap:4px 22px;justify-content:flex-end}
+body.home #auth{min-height:calc(100vh - 100px);min-height:calc(100dvh - 100px)}
+#main{min-height:calc(100vh - 100px);min-height:calc(100dvh - 100px)}
+.tw{-webkit-overflow-scrolling:touch}
 
-/* --- touch screens: bigger tap targets, and 16px inputs so iOS does not zoom in on focus --- */
+/* --- touch screens: bigger tap targets; 16px inputs so iOS does not zoom on focus --- */
 @media(pointer:coarse){
   input,select,textarea{font-size:16px!important}
   nav .link,.tabs .link{padding:8px 2px}
@@ -206,17 +210,26 @@ nav{flex-wrap:wrap;gap:4px 22px;justify-content:flex-end}
   #bar .sp,#bar .bmk{min-height:36px;padding:6px 12px}
   #bar .tbtn{min-width:40px;min-height:40px}
   .pgbox .act{padding:6px 0}
+  #p-mem td .link{padding:6px 0}
+  input[type=checkbox]{width:20px;height:20px}
 }
 
-/* --- phones: the cover photo is drawn by a fixed layer (iOS ignores background-attachment:fixed) --- */
+/* --- phones: cover photo drawn by a fixed layer (iOS ignores background-attachment:fixed) --- */
 @media(hover:none){
   body.home{background:#12142b}
   body.home::after{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;background:url(Cover.jpg) center/cover no-repeat}
 }
 
-/* --- tablets and landscape phones (up to 1000px wide): narrower contents column --- */
+/* --- large tablets / small laptops: admin chapter rows get tighter columns --- */
+@media(min-width:901px) and (max-width:1100px){
+  .row{grid-template-columns:48px 1fr 1fr 120px 80px auto auto auto auto;gap:8px 10px}
+  .row input,.row select{min-width:0;width:100%}
+}
+
+/* --- tablets and landscape phones (up to 1000px): narrower contents column --- */
 @media(max-width:1000px){
   #lib{grid-template-columns:230px minmax(0,1fr);gap:32px}
+  #bar .nowp{max-width:20%}
 }
 
 /* --- admin screens and anything under 900px --- */
@@ -224,8 +237,7 @@ nav{flex-wrap:wrap;gap:4px 22px;justify-content:flex-end}
   #admin{padding:28px 0 100px}
   #admin h2{font-size:1.7rem}
   .tabs{flex-wrap:wrap;gap:10px 22px}
-  table{min-width:640px}
-  .tw{-webkit-overflow-scrolling:touch}
+  table{min-width:760px}
 
   /* chapter rows stack into two columns */
   .row{grid-template-columns:1fr 1fr;gap:10px 12px;padding:14px 0}
@@ -246,7 +258,7 @@ nav{flex-wrap:wrap;gap:4px 22px;justify-content:flex-end}
   .pgbox input,.pgbox select{max-width:100%}
 }
 
-/* --- phones and small tablets in portrait (and small landscape): single column --- */
+/* --- phones and small tablets in portrait: single column --- */
 @media(max-width:800px){
   #lib{grid-template-columns:minmax(0,1fr);gap:24px;padding:24px 0 80px}
   body.hasbar #lib{padding-bottom:260px}
@@ -255,20 +267,37 @@ nav{flex-wrap:wrap;gap:4px 22px;justify-content:flex-end}
   #reader h2{font-size:clamp(1.5rem,6vw,2.2rem);margin-bottom:16px}
 
   /* bottom player: audio bar on its own row, then track buttons, speeds and bookmark */
+  #bar{max-height:50vh;overflow-y:auto}
   #bar .nowp{display:none}
   #bar .in{gap:8px 10px}
   #bar .in audio{flex:1 1 100%;order:1}
   #bar .tctl{order:2}
   #bar .spds{order:3;flex-wrap:wrap}
   #bar .bmk{order:4;margin-left:auto}
+  #bar .nextup{font-size:.88rem;gap:8px 12px}
 }
 
-/* --- nav and header on phones --- */
+/* --- nav, header and Members cards on phones --- */
 @media(max-width:700px){
   header{padding:16px 0}
   .brand{font-size:1.1rem;letter-spacing:.04em}
   nav{gap:4px 16px}
   #main .verse{padding:24px 12px}
+
+  /* Members: one card per person instead of a wide table */
+  #p-mem table{min-width:0}
+  #p-mem thead{display:none}
+  #p-mem table,#p-mem tbody,#p-mem tr,#p-mem td{display:block;width:100%}
+  #p-mem tr{border:1px solid var(--line);background:var(--panel);padding:10px 14px;margin-bottom:14px}
+  #p-mem td{border:0;padding:6px 0;display:flex;justify-content:space-between;align-items:center;gap:14px;overflow-wrap:anywhere;text-align:right}
+  #p-mem td::before{flex:none;color:var(--mute);text-align:left}
+  #p-mem td:nth-child(1)::before{content:'Name'}
+  #p-mem td:nth-child(2)::before{content:'Email'}
+  #p-mem td:nth-child(3)::before{content:'Phone'}
+  #p-mem td:nth-child(4)::before{content:'Joined'}
+  #p-mem td:nth-child(5)::before{content:'Last seen'}
+  #p-mem td:nth-child(6)::before{content:'Access'}
+  #p-mem td:nth-child(7)::before{content:'Role'}
 }
 
 @media(max-width:600px){
@@ -276,6 +305,14 @@ nav{flex-wrap:wrap;gap:4px 22px;justify-content:flex-end}
   #bar{padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right))}
   body.home #auth{padding-bottom:12vh}
   #authForm{padding:14px;gap:10px}
+  #bms .bsub{font-size:.8rem}
+}
+
+/* --- very small phones --- */
+@media(max-width:360px){
+  .wrap{padding-left:12px;padding-right:12px}
+  nav{gap:2px 12px;font-size:.85rem}
+  #main .st{font-size:1.1rem}
 }
 
 /* --- phones held sideways: very little height, so compact everything --- */
@@ -283,13 +320,11 @@ nav{flex-wrap:wrap;gap:4px 22px;justify-content:flex-end}
   header{padding:10px 0}
   .brand{font-size:1.1rem}
 
-  /* sign-in cover */
   body.home #auth{min-height:calc(100vh - 56px);min-height:calc(100dvh - 56px);padding-bottom:5vh}
   #authForm{padding:10px 14px 8px;gap:6px 12px}
   #authForm input{padding:6px 10px}
   #authForm .btn{padding:6px 22px}
 
-  /* main verse page */
   #main{min-height:calc(100vh - 56px);min-height:calc(100dvh - 56px);padding:8px 0 24px}
   #main .verse{padding:12px 16px}
   #main p{line-height:1.5}
@@ -297,20 +332,17 @@ nav{flex-wrap:wrap;gap:4px 22px;justify-content:flex-end}
   #main .st{font-size:clamp(.95rem,5vh,1.4rem);margin-bottom:10px}
   #main .btn{margin-top:6px;padding:8px 22px}
 
-  /* library */
   #lib{padding:20px 0 60px}
   body.hasbar #lib{padding-bottom:150px}
   #toc ol{max-height:60vh}
 
-  /* bottom player: compact, wraps onto two short rows only when needed */
-  #bar{padding-top:6px;padding-bottom:calc(6px + env(safe-area-inset-bottom,0px))}
+  #bar{padding-top:6px;padding-bottom:calc(6px + env(safe-area-inset-bottom,0px));max-height:none;overflow:visible}
   #bar .in{gap:6px 10px}
   #bar .in audio{flex:1 1 260px;order:0;height:34px}
   #bar .tctl,#bar .spds,#bar .bmk{order:0}
-  #bar .bmk{margin-left:0}
+  #bar .bmk{margin-left:0;min-height:30px}
   #bar .spds{flex-wrap:nowrap}
   #bar .sp{padding:2px 7px;min-height:30px}
-  #bar .bmk{min-height:30px}
   #bar .mline{margin-top:2px}
   #bar .rail{height:34px}
 }
@@ -356,6 +388,7 @@ try{var k=Object.keys(localStorage).some(function(x){return /^sb-.*-auth-token$/
     <form id="authForm">
       <input type="text" id="nm" placeholder="Your name" data-p="name" class="hidden" autocomplete="name">
       <input type="email" id="em" placeholder="Email" data-p="email" required autocomplete="email">
+      <input type="tel" id="ph" placeholder="Mobile number with country code, e.g. +91 98765 43210" class="hidden" autocomplete="tel" inputmode="tel">
       <input type="password" id="pw" placeholder="Password (6+ characters)" data-p="pass" required minlength="6" autocomplete="current-password">
       <button class="btn" id="authBtn">Sign in</button>
       <button type="button" class="link" id="toggle">New here? Create an account</button>
@@ -410,7 +443,7 @@ try{var k=Object.keys(localStorage).some(function(x){return /^sb-.*-auth-token$/
     </form>
   </div>
   <div class="pane wide hidden" id="p-ch"><input type="file" id="fT" accept="audio/*" multiple class="hidden"><div class="msg" id="trkMsg" role="status"></div><div id="timing" class="hidden"></div><div id="rows"></div></div>
-  <div class="pane wide hidden" id="p-mem"><div class="tw"><table><thead><tr><th>Name</th><th>Email</th><th>Joined</th><th>Last seen</th><th>Access</th><th>Role</th></tr></thead><tbody id="mrows"></tbody></table></div></div>
+  <div class="pane wide hidden" id="p-mem"><div class="tw"><table><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Joined</th><th>Last seen</th><th>Access</th><th>Role</th></tr></thead><tbody id="mrows"></tbody></table></div></div>
 </div>
 </section>
 </div>
@@ -439,7 +472,7 @@ $('bookTag').textContent = BOOK.tagline;
 /* Interface text is English only. Only chapter titles (the index) are Gujarati. */
 const T = {
   library: 'Library', home: 'Home', admin: 'Admin', out: 'Sign out', contents: 'Contents', choose: 'Choose a chapter to begin.',
-  name: 'Your name', email: 'Email', pass: 'Password (6+ characters)', signin: 'Sign in', create: 'Create account',
+  name: 'Your name', phone: 'Mobile number', email: 'Email', pass: 'Password (6+ characters)', signin: 'Sign in', create: 'Create account',
   'new': 'New here? Create an account', have: 'Already registered? Sign in',
   check: 'Check your email to confirm, then sign in.', paused: 'Your access is paused. Please contact the administrator.',
   empty: 'Chapters will appear here.', pickSub: 'Choose a sub-section from the contents.'
@@ -485,13 +518,22 @@ setTimeout(() => { if (document.body.classList.contains('boot')) show('auth'); }
 $('toggle').onclick = () => {
   signup = !signup;
   $('nm').classList.toggle('hidden', !signup);
+  $('nm').required = signup;
+  $('ph').classList.toggle('hidden', !signup);
+  $('ph').required = signup;
   applyLang();
   $('authMsg').textContent = '';
 };
 $('authForm').onsubmit = async e => {
   e.preventDefault();
   const c = { email: $('em').value, password: $('pw').value };
-  if (signup) c.options = { data: { full_name: $('nm').value }, emailRedirectTo: window.location.origin };
+  if (signup) {
+    const name = $('nm').value.trim();
+    const phone = $('ph').value.trim();
+    if (name.length < 2) return $('authMsg').textContent = 'Please enter your name.';
+    if (phone.replace(/\D/g, '').length < 8) return $('authMsg').textContent = 'Please enter your mobile number with country code.';
+    c.options = { data: { full_name: name, phone }, emailRedirectTo: window.location.origin };
+  }
   const { data, error } = signup ? await sb.auth.signUp(c) : await sb.auth.signInWithPassword(c);
   if (error) return $('authMsg').textContent = error.message;
   if (signup && !data.session) $('authMsg').textContent = t('check');
@@ -518,6 +560,9 @@ sb.auth.onAuthStateChange(async (_e, s) => {
     sb.rpc('touch_me');
     const { data } = await sb.from('profiles').select('*').eq('id', s.user.id).single();
     me = data || {};
+    /* save the mobile number given at sign-up into the member's profile (first sign-in) */
+    const mp = (s.user.user_metadata && s.user.user_metadata.phone) || '';
+    if (mp && !me.phone) { await sb.rpc('set_my_phone', { p: mp }); me.phone = mp; }
     $('goAdmin').classList.toggle('hidden', !me.is_admin);
     const back = _e === 'INITIAL_SESSION' ? store.get('view') : '';   /* a page reload returns to where the user was; a fresh sign-in shows the main page */
     if (me.is_admin && back === 'admin') { show('admin'); tab(store.get('atab') || 'up'); loadChapters(); loadStats(); return; }
@@ -701,6 +746,9 @@ async function openChapter(ch, auto, resume) {
 
   if (aurls.length) {
     const au = h('audio', { controls: true, preload: 'metadata' });
+    /* no download button or right-click "save audio as" for listeners */
+    au.setAttribute('controlsList', 'nodownload noplaybackrate');
+    au.addEventListener('contextmenu', e => e.preventDefault());
     const lab = h('span', { className: 'trk' });
     /* what plays, in order: every page's own tracks, page by page, or simply all tracks of the chapter */
     const q = [];
@@ -721,7 +769,7 @@ async function openChapter(ch, auto, resume) {
     };
     /* when a track finishes, continue with the next one */
     au.addEventListener('ended', () => { if (ti < q.length - 1) setTrack(ti + 1, true); else offerNext(ch, au); });
-    /* any new playback cancels the \"next chapter\" countdown */
+    /* any new playback cancels the "next chapter" countdown */
     au.addEventListener('play', () => { clearInterval(nextTimer); const n = $('bar').querySelector('.nextup'); if (n) n.remove(); });
 
     /* playback speed (remembered; defaultPlaybackRate keeps it when the track changes) */
@@ -989,6 +1037,8 @@ async function openTiming(ch, st) {
   ]);
   const aurls = (a || []).map(x => x.signedUrl);
   const au = h('audio', { controls: true, preload: 'metadata' });
+  au.setAttribute('controlsList', 'nodownload');
+  au.addEventListener('contextmenu', e => e.preventDefault());
   const msg = h('div', { className: 'msg', role: 'status' });
   const pvLab = h('span', { className: 'note' });
   const modeNote = h('div', { className: 'modenote' });
@@ -1071,7 +1121,7 @@ async function openTiming(ch, st) {
         pickTracks(ch, s => { msg.textContent = s; }, () => {
           const ch2 = chapters.find(c => c.id === ch.id) || ch, n2 = tracksOf(ch2).length;
           const d = capture(); for (let k = before + 1; k <= n2; k++) { d[i].list.push(k); d[i].times.push('0:00'); d[i].labels.push(''); }
-          openTiming(ch2, { draft: d, note: `Added to page ${i + 1}. Click \"Save timings\" to keep it.` });
+          openTiming(ch2, { draft: d, note: `Added to page ${i + 1}. Click "Save timings" to keep it.` });
         });
       } });
     redraw.push(() => {
@@ -1225,12 +1275,18 @@ async function loadMembers() {
   const { data } = await sb.from('profiles').select('*').order('created_at', { ascending: false });
   $('mrows').replaceChildren(...(data || []).map(u => {
     const self = u.id === me.id;
+    const ph = h('button', { className: 'link', textContent: u.phone || 'Add', title: 'Click to edit (include country code, e.g. +919876543210)',
+      onclick: async () => {
+        const v = prompt('Mobile number with country code for ' + (u.full_name || u.email), u.phone || '+'); if (v === null) return;
+        const r = await sb.from('profiles').update({ phone: v.trim() || null }).eq('id', u.id);
+        if (r.error) alert(r.error.message); loadMembers();
+      } });
     const acc = h('button', { className: 'link', textContent: u.approved ? 'Active (pause)' : 'Paused (allow)', disabled: self,
       onclick: async () => { await sb.from('profiles').update({ approved: !u.approved }).eq('id', u.id); loadMembers(); } });
     const rol = h('button', { className: 'link', textContent: u.is_admin ? 'Admin (remove)' : 'Member (make admin)', disabled: self,
       onclick: async () => { await sb.from('profiles').update({ is_admin: !u.is_admin }).eq('id', u.id); loadMembers(); } });
     return h('tr', {}, h('td', { textContent: u.full_name || '-' }), h('td', { textContent: u.email }),
-      h('td', { textContent: fmt(u.created_at) }), h('td', { textContent: fmt(u.last_seen) }), h('td', {}, acc), h('td', {}, rol));
+      h('td', {}, ph), h('td', { textContent: fmt(u.created_at) }), h('td', { textContent: fmt(u.last_seen) }), h('td', {}, acc), h('td', {}, rol));
   }));
 }
 </script>
