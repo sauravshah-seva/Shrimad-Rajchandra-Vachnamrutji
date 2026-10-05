@@ -575,6 +575,19 @@ const logAct = (event, chapter_id, seconds) => {
   sb.from('activity').insert({ user_id: me.id, event, chapter_id: chapter_id || null, seconds: seconds || 0 }).then(() => {}, () => {});
 };
 
+/* last spot (chapter, track, second) kept in this browser, so a page refresh returns to the same place */
+const lastPos = {
+  get: () => { try { return JSON.parse(localStorage.getItem('last:' + me.id) || 'null'); } catch (e) { return null; } },
+  set: v => { try { if (me.id) localStorage.setItem('last:' + me.id, JSON.stringify(v)); } catch (e) {} }
+};
+function restoreLast() {
+  const l = lastPos.get(); if (!l || current !== null) return;
+  const ch = chapters.find(c => c.id === l.chapter_id); if (!ch) return;
+  for (let p = chapters.find(c => c.id === ch.parent_id); p; p = chapters.find(c => c.id === p.parent_id)) expanded.add(p.id);
+  renderToc();
+  openChapter(ch, false, { ti: l.ti || 0, t: l.t || 0, quiet: true });
+}
+
 let shownUid = null;
 sb.auth.onAuthStateChange(async (_e, s) => {
   $('nav').classList.toggle('hidden', !s);
@@ -596,7 +609,7 @@ sb.auth.onAuthStateChange(async (_e, s) => {
     if (me.is_admin && back === 'admin') { show('admin'); tab(store.get('atab') || 'up'); loadChapters(); loadStats(); return; }
     show(back === 'lib' ? 'lib' : 'main');
     if (!me.approved && !me.is_admin) $('reader').replaceChildren(h('p', { className: 'empty', textContent: t('paused') }));
-    else loadChapters().then(loadBookmarks);
+    else loadChapters().then(loadBookmarks).then(() => { if (back === 'lib') restoreLast(); });
   });
 });
 
@@ -680,10 +693,10 @@ const fmtT = s => {
   return (hh ? hh + ':' + String(mm).padStart(2, '0') : mm) + ':' + String(ss).padStart(2, '0');
 };
 
-let nextTimer = null, redrawMs = null, flushListen = null;
+let nextTimer = null, redrawMs = null, flushListen = null, keepPos = null;
 window.addEventListener('resize', () => { if (redrawMs) redrawMs(); });
-document.addEventListener('visibilitychange', () => { if (document.hidden && flushListen) flushListen(); });
-window.addEventListener('pagehide', () => { if (flushListen) flushListen(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) { if (flushListen) flushListen(); if (keepPos) keepPos(); } });
+window.addEventListener('pagehide', () => { if (flushListen) flushListen(); if (keepPos) keepPos(); });
 function stopBar() {
   clearInterval(nextTimer);
   redrawMs = null;
@@ -766,7 +779,10 @@ async function openChapter(ch, auto, resume) {
   if (current !== ch.id) return;
 
   stopBar();
-  if (aurls.length || list.length) logAct('open', ch.id, 0);
+  if (aurls.length || list.length) {
+    if (!(resume && resume.quiet)) logAct('open', ch.id, 0);
+    lastPos.set({ chapter_id: ch.id, ti: resume ? resume.ti || 0 : 0, t: resume ? resume.t || 0 : 0 });
+  }
   const parts = [h('h2', {}, ttl(ch), pgLabel(ch) ? h('span', { className: 'pg', textContent: pgLabel(ch) }) : '')];
   /* page-by-page mode: pages have their own track lists. timed mode: one audio, pages appear at set times. */
   const keepR = p => Array.isArray(p.track_nums) ? p.track_nums.map((n, k) => k).filter(k => aurls[p.track_nums[k] - 1]) : [];
@@ -832,6 +848,17 @@ async function openChapter(ch, auto, resume) {
     };
     spd.append(...spBtns);
     setSpd(saved);
+
+    /* remember the spot so a page refresh comes back to the same chapter, track and second */
+    let lastSv = 0;
+    const keep = force => {
+      if (current !== ch.id || au.readyState < 1) return;
+      const n = Date.now(); if (!force && n - lastSv < 3000) return; lastSv = n;
+      lastPos.set({ chapter_id: ch.id, ti, t: Math.floor(au.currentTime) });
+    };
+    keepPos = () => keep(true);
+    au.addEventListener('timeupdate', () => keep(false));
+    ['pause', 'seeked'].forEach(ev => au.addEventListener(ev, () => keep(true)));
 
     const bmk = h('button', { type: 'button', className: 'link bmk', textContent: 'Bookmark', title: 'Save this spot and resume later',
       onclick: async () => {
