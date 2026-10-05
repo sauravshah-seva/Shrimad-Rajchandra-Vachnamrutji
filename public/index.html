@@ -555,8 +555,9 @@ $('authForm').onsubmit = async e => {
     if (phone.replace(/\D/g, '').length < 8) return $('authMsg').textContent = 'Please enter your mobile number with country code.';
     c.options = { data: { full_name: name, phone }, emailRedirectTo: window.location.origin };
   }
+  freshLogin = true;   /* a real sign-in on this page: land on the main page, not on the last view */
   const { data, error } = signup ? await sb.auth.signUp(c) : await sb.auth.signInWithPassword(c);
-  if (error) return $('authMsg').textContent = error.message;
+  if (error) { freshLogin = false; return $('authMsg').textContent = error.message; }
   if (signup && !data.session) $('authMsg').textContent = t('check');
 };
 $('out').onclick = () => { store.set('view', ''); store.set('lg', ''); sb.auth.signOut(); };
@@ -588,7 +589,7 @@ function restoreLast() {
   openChapter(ch, false, { ti: l.ti || 0, t: l.t || 0, quiet: true });
 }
 
-let shownUid = null;
+let shownUid = null, freshLogin = false;
 sb.auth.onAuthStateChange(async (_e, s) => {
   $('nav').classList.toggle('hidden', !s);
   if (!s) { me = {}; bms = []; shownUid = null; return show('auth'); }
@@ -605,7 +606,7 @@ sb.auth.onAuthStateChange(async (_e, s) => {
     if (mp && !me.phone) { await sb.rpc('set_my_phone', { p: mp }); me.phone = mp; }
     if (!store.get('lg')) { store.set('lg', '1'); logAct('login'); }
     $('goAdmin').classList.toggle('hidden', !me.is_admin);
-    const back = _e === 'INITIAL_SESSION' ? store.get('view') : '';   /* a page reload returns to where the user was; a fresh sign-in shows the main page */
+    const back = freshLogin ? '' : store.get('view'); freshLogin = false;   /* a page reload returns to where the user was; a fresh sign-in shows the main page */
     if (me.is_admin && back === 'admin') { show('admin'); tab(store.get('atab') || 'up'); loadChapters(); loadStats(); return; }
     show(back === 'lib' ? 'lib' : 'main');
     if (!me.approved && !me.is_admin) $('reader').replaceChildren(h('p', { className: 'empty', textContent: t('paused') }));
