@@ -97,6 +97,9 @@ th{text-align:left;color:var(--mute);font-weight:300;padding:8px 10px 8px 0;bord
 td{padding:12px 10px 12px 0;border-bottom:1px solid var(--line)}
 .tag{color:var(--gold)}
 .tw{overflow-x:auto}
+/* admin: activity report */
+.actbar{display:flex;gap:24px;align-items:end;flex-wrap:wrap;margin-bottom:12px}
+#p-act h3{font-size:1.4rem;margin:28px 0 8px}
 /* admin: page timings editor */
 #timing{border:1px solid var(--line);padding:22px;margin-bottom:36px;background:var(--panel);display:grid;gap:14px}
 #timing h3{font-size:1.6rem}
@@ -427,6 +430,7 @@ try{var k=Object.keys(localStorage).some(function(x){return /^sb-.*-auth-token$/
     <button class="link" data-t="up">Upload</button>
     <button class="link" data-t="ch">Chapters</button>
     <button class="link" data-t="mem">Members</button>
+    <button class="link" data-t="act">Activity</button>
   </div>
 
   <div class="pane" id="p-up">
@@ -448,6 +452,19 @@ try{var k=Object.keys(localStorage).some(function(x){return /^sb-.*-auth-token$/
   </div>
   <div class="pane wide hidden" id="p-ch"><input type="file" id="fT" accept="audio/*" multiple class="hidden"><div class="msg" id="trkMsg" role="status"></div><div id="timing" class="hidden"></div><div id="rows"></div></div>
   <div class="pane wide hidden" id="p-mem"><div class="tw"><table><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Joined</th><th>Last seen</th><th>Access</th><th>Role</th></tr></thead><tbody id="mrows"></tbody></table></div></div>
+  <div class="pane wide hidden" id="p-act">
+    <div class="actbar">
+      <label>Period<select id="actRange"><option value="7">Last 7 days</option><option value="30" selected>Last 30 days</option><option value="90">Last 90 days</option><option value="0">All time</option></select></label>
+      <button type="button" class="link" id="actCsv">Download CSV</button>
+    </div>
+    <div class="msg" id="actMsg" role="status"></div>
+    <h3>Members</h3>
+    <div class="tw"><table><thead><tr><th>Name</th><th>Phone</th><th>Visits</th><th>Chapters opened</th><th>Time listened</th><th>Last active</th></tr></thead><tbody id="arows"></tbody></table></div>
+    <h3>Most listened chapters</h3>
+    <div class="tw"><table><thead><tr><th>Chapter</th><th>Members</th><th>Times opened</th><th>Time listened</th></tr></thead><tbody id="acrows"></tbody></table></div>
+    <h3>Recent activity (latest 100)</h3>
+    <div class="tw"><table><thead><tr><th>When</th><th>Member</th><th>What</th></tr></thead><tbody id="alog"></tbody></table></div>
+  </div>
 </div>
 </section>
 </div>
@@ -542,7 +559,7 @@ $('authForm').onsubmit = async e => {
   if (error) return $('authMsg').textContent = error.message;
   if (signup && !data.session) $('authMsg').textContent = t('check');
 };
-$('out').onclick = () => { store.set('view', ''); sb.auth.signOut(); };
+$('out').onclick = () => { store.set('view', ''); store.set('lg', ''); sb.auth.signOut(); };
 $('goMain').onclick = () => show('main');
 new Image().src = 'Main-2.jpg'; /* preload so the change is instant */
 { const eb = $('enterLib'), peek = on => document.body.classList.toggle('peek', on);
@@ -551,6 +568,12 @@ new Image().src = 'Main-2.jpg'; /* preload so the change is instant */
 $('enterLib').onclick = () => { show('lib'); loadChapters().then(loadBookmarks); };
 $('goLib').onclick = () => { show('lib'); loadChapters(); };
 $('goAdmin').onclick = () => { show('admin'); tab('up'); loadChapters(); loadStats(); };
+
+/* activity log: one small row per sign-in, chapter opened, or stretch of listening (read only by admins) */
+const logAct = (event, chapter_id, seconds) => {
+  if (!me.id) return;
+  sb.from('activity').insert({ user_id: me.id, event, chapter_id: chapter_id || null, seconds: seconds || 0 }).then(() => {}, () => {});
+};
 
 let shownUid = null;
 sb.auth.onAuthStateChange(async (_e, s) => {
@@ -567,6 +590,7 @@ sb.auth.onAuthStateChange(async (_e, s) => {
     /* save the mobile number given at sign-up into the member's profile (first sign-in) */
     const mp = (s.user.user_metadata && s.user.user_metadata.phone) || '';
     if (mp && !me.phone) { await sb.rpc('set_my_phone', { p: mp }); me.phone = mp; }
+    if (!store.get('lg')) { store.set('lg', '1'); logAct('login'); }
     $('goAdmin').classList.toggle('hidden', !me.is_admin);
     const back = _e === 'INITIAL_SESSION' ? store.get('view') : '';   /* a page reload returns to where the user was; a fresh sign-in shows the main page */
     if (me.is_admin && back === 'admin') { show('admin'); tab(store.get('atab') || 'up'); loadChapters(); loadStats(); return; }
@@ -656,8 +680,10 @@ const fmtT = s => {
   return (hh ? hh + ':' + String(mm).padStart(2, '0') : mm) + ':' + String(ss).padStart(2, '0');
 };
 
-let nextTimer = null, redrawMs = null;
+let nextTimer = null, redrawMs = null, flushListen = null;
 window.addEventListener('resize', () => { if (redrawMs) redrawMs(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && flushListen) flushListen(); });
+window.addEventListener('pagehide', () => { if (flushListen) flushListen(); });
 function stopBar() {
   clearInterval(nextTimer);
   redrawMs = null;
@@ -740,6 +766,7 @@ async function openChapter(ch, auto, resume) {
   if (current !== ch.id) return;
 
   stopBar();
+  if (aurls.length || list.length) logAct('open', ch.id, 0);
   const parts = [h('h2', {}, ttl(ch), pgLabel(ch) ? h('span', { className: 'pg', textContent: pgLabel(ch) }) : '')];
   /* page-by-page mode: pages have their own track lists. timed mode: one audio, pages appear at set times. */
   const keepR = p => Array.isArray(p.track_nums) ? p.track_nums.map((n, k) => k).filter(k => aurls[p.track_nums[k] - 1]) : [];
@@ -755,6 +782,19 @@ async function openChapter(ch, auto, resume) {
     /* no download button or right-click "save audio as" for listeners */
     au.setAttribute('controlsList', 'nodownload noplaybackrate');
     au.addEventListener('contextmenu', e => e.preventDefault());
+    /* activity report: add up the time this member really listens, and send it in small pieces */
+    let heard = 0, lastT = null;
+    const flush = () => { const s = Math.round(heard); heard = 0; if (s >= 5) logAct('listen', ch.id, s); };
+    flushListen = flush;
+    au.addEventListener('timeupdate', () => {
+      const tt = au.currentTime;
+      if (!au.paused && lastT !== null && tt > lastT && tt - lastT < 2) heard += tt - lastT;
+      lastT = tt;
+      if (heard >= 60) flush();
+    });
+    au.addEventListener('pause', () => { lastT = null; flush(); });
+    au.addEventListener('seeking', () => { lastT = null; });
+    au.addEventListener('ended', flush);
     const lab = h('span', { className: 'trk' });
     /* what plays, in order: every page's own tracks, page by page, or simply all tracks of the chapter */
     const q = [];
@@ -896,9 +936,10 @@ async function openChapter(ch, auto, resume) {
 /* ---------- admin: tabs & stats ---------- */
 function tab(t) {
   store.set('atab', t);
-  ['up', 'ch', 'mem'].forEach(x => $('p-' + x).classList.toggle('hidden', x !== t));
+  ['up', 'ch', 'mem', 'act'].forEach(x => $('p-' + x).classList.toggle('hidden', x !== t));
   document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-current', b.dataset.t === t));
   if (t === 'mem') loadMembers();
+  if (t === 'act') loadActivity();
 }
 $('tabs').onclick = e => e.target.dataset.t && tab(e.target.dataset.t);
 
@@ -1286,6 +1327,71 @@ function renderRows() {
     row.style.marginLeft = (d - 1) * 22 + 'px'; return row;
   }));
 }
+
+/* ---------- admin: activity report ---------- */
+let actCsv = [];
+const fmtDur = s => { s = Math.round(s || 0); if (s < 60) return s + 's'; const hh = Math.floor(s / 3600), mm = Math.floor(s % 3600 / 60); return hh ? hh + 'h ' + mm + 'm' : mm + 'm'; };
+const chName = id => { const c = chapters.find(x => x.id === id); return c ? ttl(c) : '(deleted chapter)'; };
+const csvCell = v => { let s = String(v == null ? '' : v); if (/^[=@]|^[+\-](?![0-9 ]+$)/.test(s)) s = "'" + s; return '"' + s.replace(/"/g, '""') + '"'; };
+async function loadActivity() {
+  const msg = $('actMsg'), days = +$('actRange').value;
+  msg.textContent = 'Loading...';
+  const since = days ? new Date(Date.now() - days * 864e5).toISOString() : null;
+  const pr = await sb.from('profiles').select('*');
+  let rows = [];
+  for (let from = 0; from < 20000; from += 1000) {
+    let q = sb.from('activity').select('*').order('created_at', { ascending: false }).range(from, from + 999);
+    if (since) q = q.gte('created_at', since);
+    const r = await q;
+    if (r.error) return msg.textContent = 'Could not load activity: ' + r.error.message + (/activity/.test(r.error.message) ? ' Run the activity SQL once in the Supabase SQL editor.' : '');
+    rows = rows.concat(r.data || []);
+    if ((r.data || []).length < 1000) break;
+  }
+  /* per member */
+  const by = {};
+  rows.forEach(r => {
+    const u = by[r.user_id] || (by[r.user_id] = { visits: 0, ch: new Set(), sec: 0, last: null });
+    if (r.event === 'login') u.visits++;
+    if (r.event === 'open' && r.chapter_id != null) u.ch.add(r.chapter_id);
+    if (r.event === 'listen') u.sec += r.seconds || 0;
+    if (!u.last || r.created_at > u.last) u.last = r.created_at;
+  });
+  const people = (pr.data || []).map(p => {
+    const u = by[p.id] || { visits: 0, ch: new Set(), sec: 0, last: null };
+    return { p, u, last: u.last || p.last_seen || null };
+  }).sort((a, b) => String(b.last || '').localeCompare(String(a.last || '')));
+  $('arows').replaceChildren(...people.map(({ p, u, last }) => h('tr', {},
+    h('td', { textContent: p.full_name || p.email || '-' }), h('td', { textContent: p.phone || '-' }),
+    h('td', { textContent: u.visits }), h('td', { textContent: u.ch.size }), h('td', { textContent: fmtDur(u.sec) }),
+    h('td', { textContent: last ? new Date(last).toLocaleString() : '-' }))));
+  /* per chapter */
+  const cs = {};
+  rows.forEach(r => {
+    if (r.chapter_id == null) return;
+    const c = cs[r.chapter_id] || (cs[r.chapter_id] = { users: new Set(), sec: 0, opens: 0 });
+    c.users.add(r.user_id);
+    if (r.event === 'listen') c.sec += r.seconds || 0;
+    if (r.event === 'open') c.opens++;
+  });
+  const top = Object.entries(cs).sort((a, b) => b[1].sec - a[1].sec || b[1].opens - a[1].opens).slice(0, 15);
+  $('acrows').replaceChildren(...top.map(([id, c]) => h('tr', {},
+    h('td', { textContent: chName(+id) }), h('td', { textContent: c.users.size }), h('td', { textContent: c.opens }), h('td', { textContent: fmtDur(c.sec) }))));
+  /* recent log */
+  const who = {}; (pr.data || []).forEach(p => { who[p.id] = p.full_name || p.email || '-'; });
+  $('alog').replaceChildren(...rows.slice(0, 100).map(r => h('tr', {},
+    h('td', { textContent: new Date(r.created_at).toLocaleString() }), h('td', { textContent: who[r.user_id] || '-' }),
+    h('td', { textContent: r.event === 'login' ? 'Signed in' : r.event === 'open' ? 'Opened: ' + chName(r.chapter_id) : 'Listened ' + fmtDur(r.seconds) + ': ' + chName(r.chapter_id) }))));
+  actCsv = [['Name', 'Email', 'Phone', 'Visits', 'Different chapters opened', 'Minutes listened', 'Last active'],
+    ...people.map(({ p, u, last }) => [p.full_name || '', p.email || '', p.phone || '', u.visits, u.ch.size, Math.round(u.sec / 60), last ? new Date(last).toLocaleString() : ''])];
+  msg.textContent = `${rows.length} events ${days ? 'in the last ' + days + ' days' : 'in total'}.` + (rows.length >= 20000 ? ' Showing the newest 20,000.' : '');
+}
+$('actRange').onchange = loadActivity;
+$('actCsv').onclick = () => {
+  if (!actCsv.length) return;
+  const blob = new Blob(['\ufeff' + actCsv.map(r => r.map(csvCell).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  const a = h('a', { href: URL.createObjectURL(blob), download: 'member-activity-' + new Date().toISOString().slice(0, 10) + '.csv' });
+  document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
 
 /* ---------- admin: members ---------- */
 async function loadMembers() {
