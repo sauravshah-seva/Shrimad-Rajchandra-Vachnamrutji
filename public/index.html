@@ -61,12 +61,17 @@ audio{width:100%;height:40px}
 #bar .bmk:hover{color:var(--gold);border-color:var(--gold)}
 #bar .mline{max-width:1100px;margin:6px auto 0;padding:0 2px}
 #bar .mline.hidden{display:none}
-#bar .rail{position:relative;height:38px;cursor:pointer}
+#bar .rail{position:relative;height:52px;cursor:pointer}
 #bar .rail::before{content:'';position:absolute;left:0;right:0;top:6px;height:2px;background:var(--line);border-radius:2px}
 #bar .rail .head{position:absolute;top:2px;width:2px;height:10px;margin-left:-1px;background:var(--gold);left:0;pointer-events:none}
 #bar .rail .ms{position:absolute;top:0;transform:translateX(-50%);padding:14px 4px 0;border:0;background:none;cursor:pointer;font:400 .72rem Inter,sans-serif;color:var(--mute);line-height:1}
 #bar .rail .ms::before{content:'';position:absolute;left:50%;top:2px;width:2px;height:10px;margin-left:-1px;background:var(--ink);border-radius:1px}
-#bar .rail .ms.lo{top:12px}
+#bar .rail .ms{white-space:nowrap}
+#bar .rail .ms span{display:block}
+#bar .rail .ms.r1{top:12px}
+#bar .rail .ms.r2{top:24px}
+#bar .rail .ms.r1::before{top:-6px;height:20px}
+#bar .rail .ms.r2::before{top:-18px;height:32px}
 #bar .rail .ms:hover,#bar .rail .ms.on{color:var(--gold)}
 #bar .rail .ms:hover::before,#bar .rail .ms.on::before{background:var(--gold)}
 #bar .spds{display:flex;gap:4px;flex:none}
@@ -344,7 +349,6 @@ body.home #auth{min-height:calc(100vh - 100px);min-height:calc(100dvh - 100px)}
   #bar .spds{flex-wrap:nowrap}
   #bar .sp{padding:2px 7px;min-height:30px}
   #bar .mline{margin-top:2px}
-  #bar .rail{height:34px}
 }
 
 /* --- admin: page-number marker boxes next to each audio / page time --- */
@@ -652,9 +656,11 @@ const fmtT = s => {
   return (hh ? hh + ':' + String(mm).padStart(2, '0') : mm) + ':' + String(ss).padStart(2, '0');
 };
 
-let nextTimer = null;
+let nextTimer = null, redrawMs = null;
+window.addEventListener('resize', () => { if (redrawMs) redrawMs(); });
 function stopBar() {
   clearInterval(nextTimer);
+  redrawMs = null;
   const bar = $('bar'), au = bar.querySelector('audio');
   if (au) au.pause();
   bar.replaceChildren(); bar.classList.add('hidden');
@@ -801,17 +807,28 @@ async function openChapter(ch, auto, resume) {
     ms.append(rail);
     const drawMs = () => {
       const d = au.duration; if (!Number.isFinite(d) || d <= 0) return;
-      const items = getMarks().filter(m => m.t <= d).sort((a, b) => a.t - b.t);
+      /* one marker per start time, and no number repeated twice in a row */
+      const seen = new Set();
+      const items = getMarks().filter(m => m.t <= d).sort((a, b) => a.t - b.t)
+        .filter(m => { const k = Math.round(m.t * 10); if (seen.has(k)) return false; seen.add(k); return true; })
+        .filter((m, i, a) => i === 0 || String(m.label) !== String(a[i - 1].label));
       ms.classList.toggle('hidden', !items.length);
-      let last = -99, lo = false;
+      /* lay labels out in pixels on up to 3 rows so they never overlap, and keep them inside the strip */
+      const W = rail.clientWidth || rail.getBoundingClientRect().width || 300, rows = [-1e9, -1e9, -1e9];
       rail.replaceChildren(head, ...items.map(m => {
-        const left = m.t / d * 100; lo = left - last < 4.5 ? !lo : false; last = left;
-        const b = h('button', { type: 'button', className: 'ms' + (lo ? ' lo' : ''), textContent: String(m.label), title: `Page ${m.label} \u00B7 ${fmtT(m.t)}`, ariaLabel: `Go to page ${m.label}`,
-          style: `left:${left}%`, onclick: e => { e.stopPropagation(); au.currentTime = m.t; au.play().catch(() => {}); } });
+        const label = String(m.label), w = label.length * 7 + 12, tx = m.t / d * W;
+        const cx = Math.max(w / 2, Math.min(W - w / 2, tx));
+        let r = rows.findIndex(e => cx - w / 2 >= e + 2);
+        if (r < 0) r = rows.indexOf(Math.min(...rows));
+        rows[r] = cx + w / 2;
+        const b = h('button', { type: 'button', className: 'ms r' + r, title: `Page ${label} \u00B7 ${fmtT(m.t)}`, ariaLabel: `Go to page ${label}`,
+          style: `left:${m.t / d * 100}%`, onclick: e => { e.stopPropagation(); au.currentTime = m.t; au.play().catch(() => {}); } },
+          h('span', { textContent: label, style: `transform:translateX(${cx - tx}px)` }));
         b.dataset.t = m.t; return b;
       }));
       moveHead();
     };
+    redrawMs = drawMs;
     const moveHead = () => {
       const d = au.duration; if (!Number.isFinite(d) || d <= 0) return;
       head.style.left = (au.currentTime / d * 100) + '%';
