@@ -100,6 +100,8 @@ td{padding:12px 10px 12px 0;border-bottom:1px solid var(--line)}
 /* admin: activity report */
 .actbar{display:flex;gap:24px;align-items:end;flex-wrap:wrap;margin-bottom:12px}
 #p-act h3{font-size:1.4rem;margin:28px 0 8px}
+/* Gujarati name boxes use the same Gujarati font as the chapter titles in the Library */
+input.gu{font-family:'Noto Serif Gujarati','Noto Sans Gujarati',serif;font-weight:400}
 /* admin: page timings editor */
 #timing{border:1px solid var(--line);padding:22px;margin-bottom:36px;background:var(--panel);display:grid;gap:14px}
 #timing h3{font-size:1.6rem}
@@ -436,8 +438,8 @@ try{var k=Object.keys(localStorage).some(function(x){return /^sb-.*-auth-token$/
   <div class="pane" id="p-up">
     <form id="upForm" style="max-width:none">
       <label>Add to<select id="target"></select></label>
-      <label id="titleL">Chapter title (English)<input type="text" id="cTitle"></label>
-      <label id="guL">Chapter title (Gujarati)<input type="text" id="cTitleGu"></label>
+      <label id="titleL">Name (English)<input type="text" id="cTitle" placeholder="Type the name in English"></label>
+      <label id="guL">Name (Gujarati) - fills in automatically<input type="text" id="cTitleGu" class="gu" placeholder="Gujarati name appears here"></label>
       <label id="parentL">Place under<select id="parent"></select></label>
       <label id="posL">Position among siblings (blank = at the end)<input type="text" id="cPos" inputmode="numeric"></label>
       <div class="drop" id="dropA" tabindex="0">Drop audio files here, or click to choose<br><small>Several tracks are allowed. New tracks are added after any existing ones.</small><br><small id="aName"></small></div>
@@ -450,7 +452,7 @@ try{var k=Object.keys(localStorage).some(function(x){return /^sb-.*-auth-token$/
       <div class="msg" id="upMsg" role="status"></div>
     </form>
   </div>
-  <div class="pane wide hidden" id="p-ch"><input type="file" id="fT" accept="audio/*" multiple class="hidden"><div class="msg" id="trkMsg" role="status"></div><div id="timing" class="hidden"></div><div id="rows"></div></div>
+  <div class="pane wide hidden" id="p-ch"><input type="file" id="fT" accept="audio/*" multiple class="hidden"><div class="msg" id="trkMsg" role="status"></div><div class="actbar"><button type="button" class="link" id="fillGu">Fill all empty Gujarati names automatically</button></div><div id="timing" class="hidden"></div><div id="rows"></div></div>
   <div class="pane wide hidden" id="p-mem"><div class="tw"><table><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Joined</th><th>Last seen</th><th>Access</th><th>Role</th></tr></thead><tbody id="mrows"></tbody></table></div></div>
   <div class="pane wide hidden" id="p-act">
     <div class="actbar">
@@ -983,6 +985,54 @@ async function loadStats() {
   $('barfill').style.width = Math.min(100, mb / QUOTA_MB * 100) + '%';
 }
 
+/* ---------- admin: English -> Gujarati names ---------- */
+const guCache = new Map();
+async function toGujarati(text) {
+  text = String(text || '').trim(); if (!text) return '';
+  if (guCache.has(text)) return guCache.get(text);
+  try {
+    const r = await fetch('https://api.mymemory.translated.net/get?langpair=en|gu&q=' + encodeURIComponent(text));
+    const j = await r.json();
+    const out = String((j && j.responseData && j.responseData.translatedText) || '').trim();
+    if (j.responseStatus == 200 && /[\u0A80-\u0AFF]/.test(out)) { guCache.set(text, out); return out; }
+  } catch (e) {}
+  return '';
+}
+/* Fills the Gujarati box from the English box while the Gujarati box is empty or still holds an automatic translation.
+   Anything the admin types in the Gujarati box is never overwritten. */
+function autoGu(en, gu) {
+  let timer = null, seq = 0;
+  const hint = gu.placeholder;
+  const run = async () => {
+    const txt = en.value.trim(), my = ++seq;
+    if (!txt) { if (gu.dataset.auto === '1') { gu.value = ''; gu.dataset.auto = ''; } gu.placeholder = hint; return; }
+    if (gu.value.trim() && gu.dataset.auto !== '1') return;
+    gu.placeholder = 'Translating...';
+    const out = await toGujarati(txt);
+    if (my !== seq) return;
+    if (out && (!gu.value.trim() || gu.dataset.auto === '1')) { gu.value = out; gu.dataset.auto = '1'; gu.placeholder = hint; }
+    else gu.placeholder = out ? hint : 'Could not translate. Please type it here.';
+  };
+  en.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(run, 700); });
+  en.addEventListener('blur', () => { clearTimeout(timer); run(); });
+  gu.addEventListener('input', () => { gu.dataset.auto = ''; });
+  gu.addEventListener('blur', () => { if (!gu.value.trim()) run(); });
+}
+/* one click: translate every entry that has an English name but no Gujarati name, and save them */
+$('fillGu').onclick = async () => {
+  const msg = $('trkMsg'), todo = chapters.filter(c => c.title && !(c.title_gu || '').trim());
+  if (!todo.length) { msg.textContent = 'Every entry already has a Gujarati name.'; return; }
+  let ok = 0;
+  for (let i = 0; i < todo.length; i++) {
+    msg.textContent = `Translating ${i + 1} of ${todo.length}...`;
+    const gu = await toGujarati(todo[i].title);
+    if (gu) { const r = await sb.from('chapters').update({ title_gu: gu }).eq('id', todo[i].id); if (!r.error) ok++; }
+    await new Promise(r => setTimeout(r, 400));
+  }
+  msg.textContent = `Added Gujarati names to ${ok} of ${todo.length} entries. Please read through them and correct any that are not right.`;
+  await loadChapters();
+};
+
 /* ---------- admin: upload ---------- */
 function renderTarget() {
   const t = $('target'), p = $('parent'), tv = t.value, pv = p.value;
@@ -994,6 +1044,7 @@ function renderTarget() {
 }
 function syncTarget() { const n = !$('target').value; ['titleL', 'guL', 'posL', 'parentL'].forEach(i => $(i).classList.toggle('hidden', !n)); }
 $('target').onchange = syncTarget;
+autoGu($('cTitle'), $('cTitleGu'));
 
 function wireDrop(zone, input, onFiles) {
   zone.onclick = () => input.click();
@@ -1327,8 +1378,9 @@ function renderRows() {
   if (!chapters.length) return box.replaceChildren(h('p', { className: 'empty', textContent: 'No entries yet.' }));
   box.replaceChildren(...flat().map(({ c: ch, d }) => {
     const pos = h('input', { type: 'text', value: ch.position, inputMode: 'numeric', ariaLabel: 'Position' });
-    const ti = h('input', { type: 'text', value: ch.title, ariaLabel: 'English title', placeholder: 'English title' });
-    const tg = h('input', { type: 'text', value: ch.title_gu || '', ariaLabel: 'Gujarati title', placeholder: 'Gujarati title' });
+    const ti = h('input', { type: 'text', value: ch.title, ariaLabel: 'English name', placeholder: 'English name' });
+    const tg = h('input', { type: 'text', className: 'gu', value: ch.title_gu || '', ariaLabel: 'Gujarati name', placeholder: 'Gujarati name (automatic)' });
+    autoGu(ti, tg);
     const bad = new Set([ch.id, ...desc(ch).map(x => x.id)]), ht = heightOf(ch);
     const par = h('select', { ariaLabel: 'Parent' }, h('option', { value: '', textContent: 'Top level' }),
       ...flat().filter(x => !bad.has(x.c.id) && x.d + ht <= MAXD).map(x => h('option', { value: x.c.id, textContent: pad(x.d) + x.c.title })));
