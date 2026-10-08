@@ -446,12 +446,12 @@ try{var k=Object.keys(localStorage).some(function(x){return /^sb-.*-auth-token$/
       <label id="guL">Name (Gujarati) - fills in automatically<input type="text" id="cTitleGu" class="gu" placeholder="Gujarati name appears here"></label></div>
       <label id="parentL">Place under<select id="parent"></select></label>
       <label id="posL">Position among siblings (blank = at the end)<input type="text" id="cPos" inputmode="numeric"></label>
-      <div class="drop" id="dropA" tabindex="0">Drop audio files here, or click to choose<br><small>Several tracks are allowed. New tracks are added after any existing ones.</small><br><small id="aName"></small></div>
-      <div class="drop" id="dropI" tabindex="0">Drop page images here, or click to choose<br><small id="iName"></small></div>
+      <div class="drop" id="dropA" tabindex="0">Drop audio files here, or click to choose (optional)<br><small>Several tracks are allowed. New tracks are added after any existing ones.</small><br><small id="aName"></small></div>
+      <div class="drop" id="dropI" tabindex="0">Drop page images here, or click to choose (optional)<br><small id="iName"></small></div>
       <input type="file" id="fA" accept="audio/*" multiple class="hidden">
       <input type="file" id="fI" accept="image/*" multiple class="hidden">
       <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="cmp" checked>Shrink images before upload (saves storage)</label>
-      <button class="btn">Upload</button>
+      <button class="btn" id="upBtn">Save</button>
       <div class="bar" style="max-width:none;margin:0"><i id="upbar" style="width:0"></i></div>
       <div class="msg" id="upMsg" role="status"></div>
     </form>
@@ -1046,7 +1046,12 @@ function renderTarget() {
     ...flat().filter(x => x.d < MAXD).map(({ c, d }) => h('option', { value: c.id, textContent: pad(d) + c.title })));
   t.value = tv; p.value = pv; syncTarget();
 }
-function syncTarget() { const n = !$('target').value; ['nameRow', 'posL', 'parentL'].forEach(i => $(i).classList.toggle('hidden', !n)); }
+/* the button says "Save" for a title-only entry and "Upload" once files are chosen */
+function syncUpBtn() {
+  const newEntry = !$('target').value, files = audioFiles.length + imgFiles.length;
+  $('upBtn').textContent = files ? 'Upload' : (newEntry ? 'Save' : 'Upload');
+}
+function syncTarget() { const n = !$('target').value; ['nameRow', 'posL', 'parentL'].forEach(i => $(i).classList.toggle('hidden', !n)); syncUpBtn(); }
 $('target').onchange = syncTarget;
 autoGu($('cTitle'), $('cTitleGu'));
 
@@ -1061,10 +1066,12 @@ function wireDrop(zone, input, onFiles) {
 wireDrop($('dropA'), $('fA'), f => {
   audioFiles = f.filter(x => x.type.startsWith('audio/')).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
   $('aName').textContent = audioFiles.length ? audioFiles.length + ' audio file(s) selected' : '';
+  syncUpBtn();
 });
 wireDrop($('dropI'), $('fI'), f => {
   imgFiles = f.filter(x => x.type.startsWith('image/')).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
   $('iName').textContent = imgFiles.length ? imgFiles.length + ' images selected' : '';
+  syncUpBtn();
 });
 
 async function shrink(f) {
@@ -1079,9 +1086,9 @@ async function shrink(f) {
 $('upForm').onsubmit = async e => {
   e.preventDefault();
   const m = $('upMsg'), tid = $('target').value, total = imgFiles.length + audioFiles.length;
-  let done = 0; const tick = () => $('upbar').style.width = (++done / total * 100) + '%';
+  let done = 0; const tick = () => { if (total) $('upbar').style.width = (++done / total * 100) + '%'; };
   try {
-    if (!total && tid) throw new Error('Choose audio files or page images.');
+    if (!total && tid) throw new Error('Choose audio files or page images to add, or pick "A new entry in the index" to save a title only.');
     let ch = chapters.find(c => c.id == tid), folder, up = async (p, f, o) => { const r = await sb.storage.from(B).upload(p, f, o); if (r.error) throw r.error; };
     const trs = ch ? tracksOf(ch) : [];
     if (!ch) {
@@ -1123,10 +1130,11 @@ $('upForm').onsubmit = async e => {
       rows.push({ chapter_id: ch.id, position: n, image_path: p });
     }
     if (rows.length) { const r = await sb.from('pages').insert(rows); if (r.error) throw r.error; }
-    m.textContent = 'Upload complete.'; e.target.reset(); audioFiles = []; imgFiles = [];
+    m.textContent = total ? 'Upload complete.' : 'Saved.'; e.target.reset(); audioFiles = []; imgFiles = [];
     $('aName').textContent = $('iName').textContent = ''; $('upbar').style.width = 0;
+    $('cTitleGu').dataset.auto = ''; syncTarget();
     await loadChapters(); loadStats();
-  } catch (err) { m.textContent = 'Upload failed: ' + err.message + (/chapter_no/.test(err.message) ? ' Run once in the Supabase SQL editor: alter table chapters add column if not exists chapter_no text;' : ''); }
+  } catch (err) { m.textContent = (total ? 'Upload failed: ' : 'Save failed: ') + err.message + (/chapter_no/.test(err.message) ? ' Run once in the Supabase SQL editor: alter table chapters add column if not exists chapter_no text;' : ''); }
 };
 
 /* ---------- admin: add audio tracks to a chapter ---------- */
