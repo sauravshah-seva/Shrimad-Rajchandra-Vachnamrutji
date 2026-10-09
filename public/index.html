@@ -59,6 +59,22 @@ audio{width:100%;height:40px}
 #toc #bms li button.bmx{width:auto;flex:none;border-left:0;padding:12px 14px;font-size:1.1rem}
 #bar .bmk{flex:none;font-size:.85rem;padding:3px 10px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--mute);cursor:pointer;white-space:nowrap}
 #bar .bmk:hover{color:var(--gold);border-color:var(--gold)}
+/* premium bookmark ribbon: outline when free, gold-leaf fill when marked */
+.bmi{display:inline-flex;width:1.15em;height:1.15em;flex:none;vertical-align:-.2em}
+.bmi svg{width:100%;height:100%;overflow:visible}
+.bmi .rib{fill:none;stroke:currentColor;stroke-width:1.6;stroke-linejoin:round;transition:fill .35s,stroke .35s}
+.bmi .shn{opacity:0;fill:none;stroke:#fff;stroke-width:1.1;stroke-linecap:round;transition:opacity .35s}
+.bmi.on .rib{fill:url(#bmGold);stroke:#7a5f22}
+.bmi.on .shn{opacity:.75}
+.bmi.on{filter:drop-shadow(0 1px 1.5px rgba(122,95,34,.45))}
+#bar .bmk{display:inline-flex;align-items:center;gap:7px;transition:.3s}
+#bar .bmk.on{color:#6d5316;border-color:var(--gold);background:linear-gradient(180deg,#fffaf0,#f6ecd2);box-shadow:inset 0 0 0 1px rgba(255,255,255,.7),0 2px 8px -3px rgba(166,133,60,.55)}
+#bar .bmk.on .bt{font-weight:500;letter-spacing:.01em}
+.bmi.pop{animation:bmdrop .55s cubic-bezier(.2,1.4,.4,1)}
+@keyframes bmdrop{0%{transform:translateY(-7px) scale(.7);opacity:.2}60%{transform:translateY(1px) scale(1.12);opacity:1}100%{transform:none}}
+#toc .bmi.tag{width:.95em;height:.95em;margin-left:8px;vertical-align:-.1em}
+#toc #bms .bmi{margin-right:8px;vertical-align:-.15em}
+@media(prefers-reduced-motion:reduce){.bmi.pop{animation:none}}
 #bar .mline{max-width:1100px;margin:6px auto 0;padding:0 2px}
 #bar .mline.hidden{display:none}
 #bar .rail{position:relative;height:52px;cursor:pointer}
@@ -376,6 +392,9 @@ body.home #auth{min-height:calc(100vh - 100px);min-height:calc(100dvh - 100px)}
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
+  <linearGradient id="bmGold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f3dc9a"/><stop offset=".45" stop-color="#c9a24d"/><stop offset="1" stop-color="#8f6f27"/></linearGradient>
+</defs></svg>
 <script>
 /* Runs before anything paints: signed-in visitors see a blank page until the library is ready; guests see the cover at once */
 try{var k=Object.keys(localStorage).some(function(x){return /^sb-.*-auth-token$/.test(x)});document.body.classList.add(k?'boot':'home')}catch(e){document.body.classList.add('home')}
@@ -620,6 +639,24 @@ sb.auth.onAuthStateChange(async (_e, s) => {
   });
 });
 
+/* bookmark ribbon icon (outline = free, gold = marked) */
+const bmIcon = (on, cls = '') => {
+  const e = document.createElement('span'); e.className = 'bmi' + (on ? ' on' : '') + (cls ? ' ' + cls : ''); e.setAttribute('aria-hidden', 'true');
+  e.innerHTML = '<svg viewBox="0 0 24 24"><path class="rib" d="M6.5 3h11a1.5 1.5 0 0 1 1.5 1.5V21l-7-4.8L5 21V4.5A1.5 1.5 0 0 1 6.5 3z"/><path class="shn" d="M8.6 5.8v8.4"/></svg>';
+  return e;
+};
+let bmkBtn = null, bmkCh = null, bmkFlash = 0;
+function syncBmk(pop) {
+  if (!bmkBtn || !bmkBtn.isConnected || !bmkCh) return;
+  const b = bms.find(x => x.chapter_id === bmkCh);
+  const ico = bmIcon(!!b, pop && b ? 'pop' : '');
+  const lab = h('span', { className: 'bt', textContent: bmkFlash ? bmkFlash : (b ? `Bookmarked \u00B7 ${fmtT(b.t)}` : 'Bookmark') });
+  bmkBtn.classList.toggle('on', !!b);
+  bmkBtn.setAttribute('aria-pressed', b ? 'true' : 'false');
+  bmkBtn.title = b ? `Bookmarked at track ${(b.ti || 0) + 1}, ${fmtT(b.t)} \u2014 tap to move it to the current spot` : 'Save this spot and resume later';
+  bmkBtn.replaceChildren(ico, lab);
+}
+
 /* ---------- bookmarks (saved per user; falls back to this browser if the bookmarks table is missing) ---------- */
 let bms = [], bmRemote = true;
 const bmLocal = {
@@ -657,10 +694,11 @@ function resumeBookmark(b) {
 function renderBookmarks() {
   const list = bms.filter(b => chapters.some(c => c.id === b.chapter_id));
   $('bmWrap').classList.toggle('hidden', !list.length);
+  syncBmk(); renderToc();
   $('bms').replaceChildren(...list.map(b => {
     const ch = chapters.find(c => c.id === b.chapter_id);
     return h('li', {},
-      h('button', { type: 'button', onclick: () => resumeBookmark(b) }, ttl(ch), h('span', { className: 'bsub', textContent: `Track ${(b.ti || 0) + 1} \u00B7 ${fmtT(b.t)}` })),
+      h('button', { type: 'button', onclick: () => resumeBookmark(b) }, bmIcon(true), ttl(ch), h('span', { className: 'bsub', textContent: `Track ${(b.ti || 0) + 1} \u00B7 ${fmtT(b.t)}` })),
       h('button', { type: 'button', className: 'bmx', textContent: '\u00D7', title: 'Remove bookmark', ariaLabel: 'Remove bookmark', onclick: () => deleteBookmark(b.chapter_id) }));
   }));
   /* nothing open yet: offer to resume the latest bookmark */
@@ -735,7 +773,9 @@ function renderToc() {
       if (k.length) expanded.has(ch.id) ? expanded.delete(ch.id) : expanded.add(ch.id);
       openChapter(ch); renderToc();
     } });
-    b.append(h('span', { className: 'tt', textContent: (k.length ? (expanded.has(ch.id) ? '\u25BE ' : '\u25B8 ') : '') + ttl(ch) }), h('span', { className: 'pg', textContent: pgLabel(ch) }));
+    const tt = h('span', { className: 'tt', textContent: (k.length ? (expanded.has(ch.id) ? '\u25BE ' : '\u25B8 ') : '') + ttl(ch) });
+    if (bms.some(x => x.chapter_id === ch.id)) { const mk = bmIcon(true, 'tag'); mk.title = 'Bookmarked'; tt.append(mk); }
+    b.append(tt, h('span', { className: 'pg', textContent: pgLabel(ch) }));
     b.dataset.id = ch.id; b.dataset.d = d; b.style.setProperty('--d', d); b.setAttribute('aria-current', current === ch.id);
     ol.append(h('li', {}, b));
     if (expanded.has(ch.id)) walk(ch.id, d + 1);
@@ -868,11 +908,14 @@ async function openChapter(ch, auto, resume) {
     au.addEventListener('timeupdate', () => keep(false));
     ['pause', 'seeked'].forEach(ev => au.addEventListener(ev, () => keep(true)));
 
-    const bmk = h('button', { type: 'button', className: 'link bmk', textContent: 'Bookmark', title: 'Save this spot and resume later',
+    const bmk = h('button', { type: 'button', className: 'link bmk',
       onclick: async () => {
+        const had = bms.some(x => x.chapter_id === ch.id);
         await saveBookmark({ chapter_id: ch.id, ti, t: Math.floor(au.currentTime) });
-        bmk.textContent = 'Saved \u2713'; setTimeout(() => { bmk.textContent = 'Bookmark'; }, 1800);
+        syncBmk(true);
+        if (had) { bmkFlash = 'Spot updated'; syncBmk(); setTimeout(() => { bmkFlash = 0; syncBmk(); }, 1500); }
       } });
+    bmkBtn = bmk; bmkCh = ch.id; syncBmk();
 
     /* milestones: a strip under the player with the page numbers marked where each page starts on the current track */
     const pn0 = (String(ch.page_no || '').match(/^\s*(\d+)/) || [])[1];
@@ -1509,4 +1552,3 @@ async function loadMembers() {
 </script>
 </body>
 </html>
-
