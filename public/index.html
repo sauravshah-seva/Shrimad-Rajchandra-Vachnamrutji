@@ -75,6 +75,29 @@ audio{width:100%;height:40px}
 #toc .bmi.tag{width:.95em;height:.95em;margin-left:8px;vertical-align:-.1em}
 #toc #bms .bmi{margin-right:8px;vertical-align:-.15em}
 @media(prefers-reduced-motion:reduce){.bmi.pop{animation:none}}
+/* contact us */
+#contact{padding:48px 0 120px}
+#contact h2{font-size:clamp(1.8rem,5vw,2.4rem);margin-bottom:8px}
+#contact .lead{color:var(--mute);max-width:52ch;margin-bottom:32px}
+#contact form{max-width:640px;margin:0}
+#cKinds{display:flex;flex-wrap:wrap;gap:8px}
+.pill{border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 16px;color:var(--mute);cursor:pointer;font-size:.9rem;transition:.25s}
+.pill:hover{color:var(--gold);border-color:var(--gold)}
+.pill[aria-checked=true]{background:var(--gold);border-color:var(--gold);color:#fff}
+textarea{font:inherit;color:inherit;background:#fff;border:1px solid var(--line);padding:12px 14px;width:100%;min-height:170px;resize:vertical;line-height:1.5}
+#contact .meta,.mcard .meta{color:var(--mute);font-size:.85rem}
+#contact .cnt{text-align:right;font-size:.8rem;color:var(--mute)}
+#contact h3{font-size:1.4rem;margin:44px 0 12px}
+#cMine{list-style:none;padding:0;max-width:640px}
+#cMine li{padding:12px 0;border-bottom:1px solid var(--line)}
+#cMine .st{float:right;font-size:.8rem;color:var(--gold)}
+#cMine .sj{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink)}
+.mcard{border:1px solid var(--line);border-left-width:1px;padding:18px 20px;margin-bottom:16px;background:#fff}
+.mcard.new{border-left:3px solid var(--gold)}
+.mcard .sj{font-size:1.15rem;margin:6px 0 4px}
+.mcard .bd{white-space:pre-wrap;overflow-wrap:anywhere;margin:8px 0 14px}
+.mcard .tag2{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:1px 10px;margin-right:8px;font-size:.78rem;color:var(--gold)}
+.mcard .acts{display:flex;flex-wrap:wrap;gap:6px 18px}
 #bar .mline{max-width:1100px;margin:6px auto 0;padding:0 2px}
 #bar .mline.hidden{display:none}
 #bar .rail{position:relative;height:52px;cursor:pointer}
@@ -406,6 +429,7 @@ try{var k=Object.keys(localStorage).some(function(x){return /^sb-.*-auth-token$/
     <nav id="nav" class="hidden">
       <button class="link" id="goMain" data-i="home">Home</button>
       <button class="link" id="goLib" data-i="library">Library</button>
+      <button class="link" id="goContact" data-i="contact">Contact</button>
       <button class="link hidden" id="goAdmin" data-i="admin">Admin</button>
       <button class="link" id="out" data-i="out">Sign out</button>
     </nav>
@@ -446,6 +470,20 @@ try{var k=Object.keys(localStorage).some(function(x){return /^sb-.*-auth-token$/
   <main id="reader"><p class="empty" data-i="choose">Choose a chapter to begin.</p></main>
 </section>
 
+<section id="contact" class="hidden">
+  <h2>Contact us</h2>
+  <p class="lead">We would love to hear from you. Send us a message, a suggestion or your feedback, or tell us if something is not working.</p>
+  <form id="cForm">
+    <div><div class="meta" style="margin-bottom:8px">What is this about?</div><div id="cKinds" role="radiogroup" aria-label="Type of message"></div></div>
+    <label>Subject (optional)<input type="text" id="cSubject" maxlength="120" autocomplete="off"></label>
+    <label>Your message<textarea id="cBody" maxlength="2000" required placeholder="Write here..."></textarea><span class="cnt" id="cCount">0 / 2000</span></label>
+    <div class="meta" id="cAs"></div>
+    <button class="btn" id="cSend">Send message</button>
+    <div class="msg" id="cMsg" role="status"></div>
+  </form>
+  <div id="cMineWrap" class="hidden"><h3>Your messages</h3><ul id="cMine"></ul></div>
+</section>
+
 <section id="admin" class="hidden">
   <h2>Administration</h2>
   <div id="stats" class="empty"></div>
@@ -455,6 +493,7 @@ try{var k=Object.keys(localStorage).some(function(x){return /^sb-.*-auth-token$/
     <button class="link" data-t="ch">Chapters</button>
     <button class="link" data-t="mem">Members</button>
     <button class="link" data-t="act">Activity</button>
+    <button class="link" data-t="msg" id="tabMsg">Messages</button>
   </div>
 
   <div class="pane" id="p-up">
@@ -477,6 +516,11 @@ try{var k=Object.keys(localStorage).some(function(x){return /^sb-.*-auth-token$/
   </div>
   <div class="pane wide hidden" id="p-ch"><input type="file" id="fT" accept="audio/*" multiple class="hidden"><div class="msg" id="trkMsg" role="status"></div><div class="actbar"><button type="button" class="link" id="fillGu">Fill all empty Gujarati names automatically</button></div><div id="timing" class="hidden"></div><div id="rows"></div></div>
   <div class="pane wide hidden" id="p-mem"><div class="tw"><table><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Joined</th><th>Last seen</th><th>Access</th><th>Role</th></tr></thead><tbody id="mrows"></tbody></table></div></div>
+  <div class="pane wide hidden" id="p-msg">
+    <div class="actbar"><label>Show<select id="msgFilter"><option value="">All</option><option value="new" selected>New</option><option value="read">Read</option><option value="resolved">Resolved</option></select></label></div>
+    <div class="msg" id="msgMsg" role="status"></div>
+    <div id="mlist"></div>
+  </div>
   <div class="pane wide hidden" id="p-act">
     <div class="actbar">
       <label>Period<select id="actRange"><option value="7">Last 7 days</option><option value="30" selected>Last 30 days</option><option value="90">Last 90 days</option><option value="0">All time</option></select></label>
@@ -517,7 +561,7 @@ $('bookTag').textContent = BOOK.tagline;
 
 /* Interface text is English only. Only chapter titles (the index) are Gujarati. */
 const T = {
-  library: 'Library', home: 'Home', admin: 'Admin', out: 'Sign out', contents: 'Contents', choose: 'Choose a chapter to begin.',
+  library: 'Library', contact: 'Contact', home: 'Home', admin: 'Admin', out: 'Sign out', contents: 'Contents', choose: 'Choose a chapter to begin.',
   name: 'Your name', phone: 'Mobile number', email: 'Email', pass: 'Password (6+ characters)', signin: 'Sign in', create: 'Create account',
   'new': 'New here? Create an account', have: 'Already registered? Sign in',
   check: 'Check your email to confirm, then sign in.', paused: 'Your access is paused. Please contact the administrator.',
@@ -545,7 +589,7 @@ const show = v => {
   document.body.classList.toggle('home', v === 'auth');
   document.body.classList.toggle('mainpg', v === 'main');
   document.body.classList.remove('peek');
-  ['auth', 'main', 'lib', 'admin'].forEach(s => $(s).classList.toggle('hidden', s !== v));
+  ['auth', 'main', 'lib', 'contact', 'admin'].forEach(s => $(s).classList.toggle('hidden', s !== v));
 };
 
 /* safety net: if the sign-in check never answers, show the sign-in page */
@@ -593,6 +637,7 @@ new Image().src = 'Main-2.jpg'; /* preload so the change is instant */
   ['mouseleave', 'blur'].forEach(ev => eb.addEventListener(ev, () => peek(false))); }
 $('enterLib').onclick = () => { show('lib'); loadChapters().then(loadBookmarks); };
 $('goLib').onclick = () => { show('lib'); loadChapters(); };
+$('goContact').onclick = () => openContact();
 $('goAdmin').onclick = () => { show('admin'); tab('up'); loadChapters(); loadStats(); };
 
 /* activity log: one small row per sign-in, chapter opened, or stretch of listening (read only by admins) */
@@ -633,6 +678,7 @@ sb.auth.onAuthStateChange(async (_e, s) => {
     $('goAdmin').classList.toggle('hidden', !me.is_admin);
     const back = freshLogin ? '' : store.get('view'); freshLogin = false;   /* a page reload returns to where the user was; a fresh sign-in shows the main page */
     if (me.is_admin && back === 'admin') { show('admin'); tab(store.get('atab') || 'up'); loadChapters(); loadStats(); return; }
+    if (back === 'contact') { openContact(); return; }
     show(back === 'lib' ? 'lib' : 'main');
     if (!me.approved && !me.is_admin) $('reader').replaceChildren(h('p', { className: 'empty', textContent: t('paused') }));
     else loadChapters().then(loadBookmarks).then(() => { if (back === 'lib') restoreLast(); });
@@ -1014,10 +1060,12 @@ async function openChapter(ch, auto, resume) {
 /* ---------- admin: tabs & stats ---------- */
 function tab(t) {
   store.set('atab', t);
-  ['up', 'ch', 'mem', 'act'].forEach(x => $('p-' + x).classList.toggle('hidden', x !== t));
+  ['up', 'ch', 'mem', 'act', 'msg'].forEach(x => $('p-' + x).classList.toggle('hidden', x !== t));
   document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-current', b.dataset.t === t));
   if (t === 'mem') loadMembers();
   if (t === 'act') loadActivity();
+  if (t === 'msg') loadMessages();
+  loadMsgBadge();
 }
 $('tabs').onclick = e => e.target.dataset.t && tab(e.target.dataset.t);
 
@@ -1549,6 +1597,87 @@ async function loadMembers() {
       h('td', {}, ph), h('td', { textContent: fmt(u.created_at) }), h('td', { textContent: fmt(u.last_seen) }), h('td', {}, acc), h('td', {}, rol));
   }));
 }
+
+/* ---------- contact us: members send messages, suggestions and feedback; admins read them under Admin > Messages ---------- */
+const KINDS = { message: 'Message', suggestion: 'Suggestion', feedback: 'Feedback', problem: 'Report a problem' };
+const KSTATUS = { 'new': 'Sent', read: 'Seen', resolved: 'Resolved' };
+const noTable = m => /does not exist|schema cache|relation/i.test(m || '');
+let ckind = 'message';
+function setKind(k) {
+  ckind = k;
+  document.querySelectorAll('#cKinds button').forEach(b => b.setAttribute('aria-checked', b.dataset.k === k));
+}
+$('cKinds').replaceChildren(...Object.entries(KINDS).map(([k, v]) => {
+  const b = h('button', { type: 'button', className: 'pill', textContent: v, onclick: () => setKind(k) });
+  b.dataset.k = k; b.setAttribute('role', 'radio'); return b;
+}));
+setKind('message');
+$('cBody').oninput = () => { $('cCount').textContent = `${$('cBody').value.length} / 2000`; };
+function openContact() {
+  show('contact');
+  $('cAs').textContent = `Sending as ${me.full_name || 'you'}${me.email ? ' \u00B7 ' + me.email : ''}`;
+  $('cMsg').textContent = '';
+  loadMyMessages();
+}
+$('cForm').onsubmit = async e => {
+  e.preventDefault();
+  const body = $('cBody').value.trim(), subject = $('cSubject').value.trim(), msg = $('cMsg'), btn = $('cSend');
+  if (body.length < 5) return msg.textContent = 'Please write a few words so we can understand.';
+  btn.disabled = true; msg.textContent = 'Sending...';
+  const r = await sb.from('contact_messages').insert({ kind: ckind, subject: subject || null, body });
+  btn.disabled = false;
+  if (r.error) {
+    msg.textContent = noTable(r.error.message)
+      ? 'Messaging is not set up yet. Please try again later.' + (me.is_admin ? ' (Admin: run the contact_messages SQL once in the Supabase SQL editor.)' : '')
+      : 'Could not send: ' + r.error.message;
+    return;
+  }
+  e.target.reset(); setKind('message'); $('cCount').textContent = '0 / 2000';
+  msg.textContent = 'Thank you! Your message has been sent.';
+  loadMyMessages();
+};
+async function loadMyMessages() {
+  const r = await sb.from('contact_messages').select('id,kind,subject,body,status,created_at').eq('user_id', me.id).order('created_at', { ascending: false }).limit(10);
+  const list = r.error ? [] : (r.data || []);
+  $('cMineWrap').classList.toggle('hidden', !list.length);
+  $('cMine').replaceChildren(...list.map(m => h('li', {},
+    h('span', { className: 'st', textContent: KSTATUS[m.status] || m.status }),
+    h('span', { className: 'sj', textContent: m.subject || m.body }),
+    h('span', { className: 'meta', textContent: `${KINDS[m.kind] || m.kind} \u00B7 ${fmt(m.created_at)}` }))));
+}
+
+/* admin: inbox */
+async function loadMsgBadge() {
+  const r = await sb.from('contact_messages').select('id', { count: 'exact', head: true }).eq('status', 'new');
+  $('tabMsg').textContent = 'Messages' + (!r.error && r.count ? ` (${r.count})` : '');
+}
+async function loadMessages() {
+  const box = $('mlist'), msg = $('msgMsg'), f = $('msgFilter').value;
+  msg.textContent = 'Loading...';
+  let q = sb.from('contact_messages').select('*').order('created_at', { ascending: false }).limit(200);
+  if (f) q = q.eq('status', f);
+  const r = await q;
+  if (r.error) { box.replaceChildren(); msg.textContent = noTable(r.error.message) ? 'The contact_messages table does not exist yet. Run the contact_messages SQL once in the Supabase SQL editor.' : r.error.message; return; }
+  const rows = r.data || [];
+  msg.textContent = rows.length ? '' : 'No messages here.';
+  const setSt = async (id, status) => { await sb.from('contact_messages').update({ status }).eq('id', id); loadMessages(); loadMsgBadge(); };
+  box.replaceChildren(...rows.map(m => {
+    const who = [m.name || 'Member', m.email, m.phone].filter(Boolean).join(' \u00B7 ');
+    const acts = h('div', { className: 'acts' });
+    if (m.status !== 'read') acts.append(h('button', { type: 'button', className: 'link', textContent: 'Mark read', onclick: () => setSt(m.id, 'read') }));
+    if (m.status !== 'resolved') acts.append(h('button', { type: 'button', className: 'link', textContent: 'Mark resolved', onclick: () => setSt(m.id, 'resolved') }));
+    if (m.status !== 'new') acts.append(h('button', { type: 'button', className: 'link', textContent: 'Mark new', onclick: () => setSt(m.id, 'new') }));
+    if (m.email) acts.append(h('button', { type: 'button', className: 'link', textContent: 'Reply by email',
+      onclick: () => { location.href = 'mailto:' + m.email + '?subject=' + encodeURIComponent('Re: ' + (m.subject || KINDS[m.kind] || 'Your message')); } }));
+    acts.append(h('button', { type: 'button', className: 'link', textContent: 'Delete',
+      onclick: async () => { if (!confirm('Delete this message?')) return; await sb.from('contact_messages').delete().eq('id', m.id); loadMessages(); loadMsgBadge(); } }));
+    return h('div', { className: 'mcard' + (m.status === 'new' ? ' new' : '') },
+      h('div', { className: 'meta' }, h('span', { className: 'tag2', textContent: KINDS[m.kind] || m.kind }), `${who} \u00B7 ${new Date(m.created_at).toLocaleString()}`),
+      m.subject ? h('div', { className: 'sj', textContent: m.subject }) : '',
+      h('div', { className: 'bd', textContent: m.body }), acts);
+  }));
+}
+$('msgFilter').onchange = loadMessages;
 </script>
 </body>
 </html>
