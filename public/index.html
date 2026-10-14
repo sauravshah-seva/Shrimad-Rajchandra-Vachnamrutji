@@ -98,6 +98,9 @@ textarea{font:inherit;color:inherit;background:#fff;border:1px solid var(--line)
 .mcard .bd{white-space:pre-wrap;overflow-wrap:anywhere;margin:8px 0 14px}
 .mcard .tag2{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:1px 10px;margin-right:8px;font-size:.78rem;color:var(--gold)}
 .mcard .acts{display:flex;flex-wrap:wrap;gap:6px 18px}
+/* set-new-password page (opened from the reset email) */
+#reset{min-height:60vh;display:grid;place-items:center;text-align:center;padding:40px 0}
+#reset h1{font-size:clamp(2rem,6vw,3rem);line-height:1.15;margin-bottom:12px}
 /* welcome line at the very top once signed in */
 #welcome{padding:14px 0 0;font-size:.95rem;color:var(--mute);letter-spacing:.02em}
 #welcome b{font-weight:500;color:var(--gold)}
@@ -453,7 +456,21 @@ try{var k=Object.keys(localStorage).some(function(x){return /^sb-.*-auth-token$/
       <input type="password" id="pw" placeholder="Password (6+ characters)" data-p="pass" required minlength="6" autocomplete="current-password">
       <button class="btn" id="authBtn">Sign in</button>
       <button type="button" class="link" id="toggle">New here? Create an account</button>
+      <button type="button" class="link" id="forgot">Forgot password?</button>
       <div class="msg" id="authMsg" role="status"></div>
+    </form>
+  </div>
+</section>
+
+<section id="reset" class="hidden">
+  <div>
+    <h1>Set a new password</h1>
+    <p class="sub">Choose a new password for your account.</p>
+    <form id="resetForm">
+      <input type="password" id="np1" placeholder="New password (6+ characters)" required minlength="6" autocomplete="new-password">
+      <input type="password" id="np2" placeholder="Confirm new password" required minlength="6" autocomplete="new-password">
+      <button class="btn" id="resetBtn">Update password</button>
+      <div class="msg" id="resetMsg" role="status"></div>
     </form>
   </div>
 </section>
@@ -464,7 +481,7 @@ try{var k=Object.keys(localStorage).some(function(x){return /^sb-.*-auth-token$/
     <p class="om">ૐ</p>
     <p class="st">અહો!<br>સર્વોત્કૃષ્ટ શાંત રસમય સન્માર્ગ</p>
     <p class="st">અહો!<br>તે સર્વોત્કૃષ્ટ શાંતરસપ્રધાન<br>માર્ગના મૂળ સર્વજ્ઞદેવ</p>
-    <p class="st">અહો!<br>તે સર્વોત્કૃષ્ટ શાંતરસ સુપ્રતીત<br>કરાવ્યો એવા પરમ કૃપાળુ<br>સદગુરુ</p>
+    <p class="st">અહો!<br>તે સર્વોત્કૃષ્ટ શાંતરસ સુપ્રતીત<br>કરાવ્યો એવા પરમ કૃપાળુ<br>સદ્ગુરુદેવ</p>
     <p class="st">આ વિશ્વમાં સર્વકાળ તમે<br>જયવંત વર્તો, જયવંત વર્તો</p>
     <button type="button" class="btn" id="enterLib">Enter Library</button>
   </div>
@@ -555,6 +572,7 @@ const BOOK = { title: 'Shrimad Rajchandra Vachnamrutji', tagline: 'જેણે 
 const QUOTA_MB = 1024; /* Supabase free storage */
 /* ======================== */
 
+let recovering = /type=recovery/.test(location.hash);   /* opened from a password-reset email */
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const $ = id => document.getElementById(id);
 const h = (t, p = {}, ...k) => { const e = Object.assign(document.createElement(t), p); e.append(...k); return e; };
@@ -595,7 +613,7 @@ const show = v => {
   document.body.classList.toggle('home', v === 'auth');
   document.body.classList.toggle('mainpg', v === 'main');
   document.body.classList.remove('peek');
-  ['auth', 'main', 'lib', 'contact', 'admin'].forEach(s => $(s).classList.toggle('hidden', s !== v));
+  ['auth', 'reset', 'main', 'lib', 'contact', 'admin'].forEach(s => $(s).classList.toggle('hidden', s !== v));
 };
 
 /* safety net: if the sign-in check never answers, show the sign-in page */
@@ -619,6 +637,7 @@ $('toggle').onclick = () => {
   $('ph').required = signup;
   applyLang();
   $('authMsg').textContent = '';
+  $('forgot').classList.toggle('hidden', signup);
 };
 $('authForm').onsubmit = async e => {
   e.preventDefault();
@@ -635,6 +654,28 @@ $('authForm').onsubmit = async e => {
   if (error) { freshLogin = false; return $('authMsg').textContent = error.message; }
   if (signup && !data.session) $('authMsg').textContent = t('check');
 };
+$('forgot').onclick = async () => {
+  const em = $('em').value.trim(), msg = $('authMsg');
+  if (!em) { msg.textContent = 'Type your email in the box above, then click "Forgot password?" again.'; $('em').focus(); return; }
+  msg.textContent = 'Sending...';
+  const { error } = await sb.auth.resetPasswordForEmail(em, { redirectTo: window.location.origin });
+  msg.textContent = error ? error.message : 'If this email is registered, a reset link is on its way. Please check your inbox and spam folder.';
+};
+$('resetForm').onsubmit = async e => {
+  e.preventDefault();
+  const a = $('np1').value, b = $('np2').value, msg = $('resetMsg'), btn = $('resetBtn');
+  if (a.length < 6) return msg.textContent = 'Please use at least 6 characters.';
+  if (a !== b) return msg.textContent = 'The two passwords do not match.';
+  btn.disabled = true; msg.textContent = 'Saving...';
+  const { error } = await sb.auth.updateUser({ password: a });
+  if (error) { btn.disabled = false; msg.textContent = error.message; return; }
+  msg.textContent = 'Password updated. Signing you in...';
+  setTimeout(() => location.replace(location.origin + location.pathname), 1200);
+};
+if (/error_code=otp_expired|error=access_denied/.test(location.hash)) {
+  $('authMsg').textContent = 'That reset link has expired or was already used. Enter your email and click "Forgot password?" for a new one.';
+  history.replaceState(null, '', location.pathname);
+}
 $('out').onclick = () => { store.set('view', ''); store.set('lg', ''); sb.auth.signOut(); };
 $('goMain').onclick = () => show('main');
 new Image().src = 'Main-2.jpg'; /* preload so the change is instant */
@@ -675,8 +716,10 @@ function setWelcome(user) {
 }
 let shownUid = null, freshLogin = false;
 sb.auth.onAuthStateChange(async (_e, s) => {
-  $('nav').classList.toggle('hidden', !s);
+  if (_e === 'PASSWORD_RECOVERY') recovering = true;
+  $('nav').classList.toggle('hidden', !s || recovering);
   if (!s) { me = {}; bms = []; shownUid = null; setWelcome(); return show('auth'); }
+  if (recovering) { setWelcome(); return show('reset'); }   /* reset link: ask for a new password instead of opening the library */
   /* Supabase re-fires this on token refresh and when the tab regains focus.
      If the same user is already signed in, do nothing so the current page (e.g. admin) stays put. */
   if (shownUid === s.user.id) return;
