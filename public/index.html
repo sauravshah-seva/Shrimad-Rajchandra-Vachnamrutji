@@ -98,6 +98,11 @@ textarea{font:inherit;color:inherit;background:#fff;border:1px solid var(--line)
 .mcard .bd{white-space:pre-wrap;overflow-wrap:anywhere;margin:8px 0 14px}
 .mcard .tag2{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:1px 10px;margin-right:8px;font-size:.78rem;color:var(--gold)}
 .mcard .acts{display:flex;flex-wrap:wrap;gap:6px 18px}
+/* welcome line at the very top once signed in */
+#welcome{padding:14px 0 0;font-size:.95rem;color:var(--mute);letter-spacing:.02em}
+#welcome b{font-weight:500;color:var(--gold)}
+body.mainpg #welcome{color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.7)}
+body.mainpg #welcome b{color:#f0d78c}
 #bar .mline{max-width:1100px;margin:6px auto 0;padding:0 2px}
 #bar .mline.hidden{display:none}
 #bar .rail{position:relative;height:52px;cursor:pointer}
@@ -423,6 +428,7 @@ body.home #auth{min-height:calc(100vh - 100px);min-height:calc(100dvh - 100px)}
 try{var k=Object.keys(localStorage).some(function(x){return /^sb-.*-auth-token$/.test(x)});document.body.classList.add(k?'boot':'home')}catch(e){document.body.classList.add('home')}
 </script>
 <div class="wrap">
+<div id="welcome" class="hidden" role="status"></div>
 <header>
   <div class="brand" id="brand"></div>
   <div class="right">
@@ -458,7 +464,7 @@ try{var k=Object.keys(localStorage).some(function(x){return /^sb-.*-auth-token$/
     <p class="om">ૐ</p>
     <p class="st">અહો!<br>સર્વોત્કૃષ્ટ શાંત રસમય સન્માર્ગ</p>
     <p class="st">અહો!<br>તે સર્વોત્કૃષ્ટ શાંતરસપ્રધાન<br>માર્ગના મૂળ સર્વજ્ઞદેવ</p>
-    <p class="st">અહો!<br>તે સર્વોત્કૃષ્ટ શાંતરસ સુપ્રતીત<br>કરાવ્યો એવા પરમ કૃપાળુ<br>સદગુરુ</p>
+    <p class="st">અહો!<br>તે સર્વોત્કૃષ્ટ શાંતરસ સુપ્રતીત<br>કરાવ્યો એવા પરમ કૃપાળુ<br>સદ્ગુરુદેવ</p>
     <p class="st">આ વિશ્વમાં સર્વકાળ તમે<br>જયવંત વર્તો, જયવંત વર્તો</p>
     <button type="button" class="btn" id="enterLib">Enter Library</button>
   </div>
@@ -659,10 +665,18 @@ function restoreLast() {
   openChapter(ch, false, { ti: l.ti || 0, t: l.t || 0, quiet: true });
 }
 
+/* "Welcome <name>" at the top for signed-in members */
+function setWelcome(user) {
+  const w = $('welcome');
+  const name = user ? (me.full_name || (user.user_metadata && user.user_metadata.full_name) || (user.email || '').split('@')[0] || '').trim() : '';
+  w.replaceChildren();
+  if (name) w.append('Welcome, ', h('b', { textContent: name }));
+  w.classList.toggle('hidden', !name);
+}
 let shownUid = null, freshLogin = false;
 sb.auth.onAuthStateChange(async (_e, s) => {
   $('nav').classList.toggle('hidden', !s);
-  if (!s) { me = {}; bms = []; shownUid = null; return show('auth'); }
+  if (!s) { me = {}; bms = []; shownUid = null; setWelcome(); return show('auth'); }
   /* Supabase re-fires this on token refresh and when the tab regains focus.
      If the same user is already signed in, do nothing so the current page (e.g. admin) stays put. */
   if (shownUid === s.user.id) return;
@@ -676,6 +690,7 @@ sb.auth.onAuthStateChange(async (_e, s) => {
     if (mp && !me.phone) { await sb.rpc('set_my_phone', { p: mp }); me.phone = mp; }
     if (!store.get('lg')) { store.set('lg', '1'); logAct('login'); }
     $('goAdmin').classList.toggle('hidden', !me.is_admin);
+    setWelcome(s.user);
     const back = freshLogin ? '' : store.get('view'); freshLogin = false;   /* a page reload returns to where the user was; a fresh sign-in shows the main page */
     if (me.is_admin && back === 'admin') { show('admin'); tab(store.get('atab') || 'up'); loadChapters(); loadStats(); return; }
     if (back === 'contact') { openContact(); return; }
