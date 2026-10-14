@@ -99,8 +99,8 @@ textarea{font:inherit;color:inherit;background:#fff;border:1px solid var(--line)
 .mcard .tag2{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:1px 10px;margin-right:8px;font-size:.78rem;color:var(--gold)}
 .mcard .acts{display:flex;flex-wrap:wrap;gap:6px 18px}
 /* set-new-password page (opened from the reset email) */
-#reset{min-height:60vh;display:grid;place-items:center;text-align:center;padding:40px 0}
-#reset h1{font-size:clamp(2rem,6vw,3rem);line-height:1.15;margin-bottom:12px}
+#reset,#phonereq{min-height:60vh;display:grid;place-items:center;text-align:center;padding:40px 0}
+#reset h1,#phonereq h1{font-size:clamp(2rem,6vw,3rem);line-height:1.15;margin-bottom:12px}
 /* welcome line at the very top once signed in */
 #welcome{padding:14px 0 0;font-size:.95rem;color:var(--mute);letter-spacing:.02em}
 #welcome b{font-weight:500;color:var(--gold)}
@@ -475,6 +475,19 @@ try{var k=Object.keys(localStorage).some(function(x){return /^sb-.*-auth-token$/
   </div>
 </section>
 
+<section id="phonereq" class="hidden">
+  <div>
+    <h1>One more step</h1>
+    <p class="sub">Please add your mobile number, with country code, to continue.</p>
+    <form id="phoneForm">
+      <input type="tel" id="phNew" placeholder="Mobile number with country code, e.g. +91 98765 43210" required autocomplete="tel" inputmode="tel">
+      <button class="btn" id="phoneBtn">Save and continue</button>
+      <button type="button" class="link" id="phoneOut">Sign out</button>
+      <div class="msg" id="phoneMsg" role="status"></div>
+    </form>
+  </div>
+</section>
+
 <section id="main" class="hidden">
   <div id="mainbg" aria-hidden="true"><i class="b1"></i><i class="f1"></i><i class="b2"></i><i class="f2"></i></div>
   <div class="verse">
@@ -577,6 +590,9 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const $ = id => document.getElementById(id);
 const h = (t, p = {}, ...k) => { const e = Object.assign(document.createElement(t), p); e.append(...k); return e; };
 const B = 'book', safe = n => n.replace(/[^a-zA-Z0-9._-]/g, '_');
+/* mobile number must carry a country code: +, then 8 to 15 digits (spaces, dashes and brackets are ignored) */
+const normPhone = v => { const x = String(v || '').replace(/[\s().-]/g, ''); return /^\+\d{8,15}$/.test(x) ? x : null; };
+const PHONE_HINT = 'Please enter a valid mobile number with country code, e.g. +91 98765 43210.';
 const fmt = d => d ? new Date(d).toLocaleDateString() : '-';
 let signup = false, me = {}, chapters = [], current = null, audioFiles = [], imgFiles = [], tracksAll = [];
 
@@ -613,7 +629,7 @@ const show = v => {
   document.body.classList.toggle('home', v === 'auth');
   document.body.classList.toggle('mainpg', v === 'main');
   document.body.classList.remove('peek');
-  ['auth', 'reset', 'main', 'lib', 'contact', 'admin'].forEach(s => $(s).classList.toggle('hidden', s !== v));
+  ['auth', 'reset', 'phonereq', 'main', 'lib', 'contact', 'admin'].forEach(s => $(s).classList.toggle('hidden', s !== v));
 };
 
 /* safety net: if the sign-in check never answers, show the sign-in page */
@@ -641,18 +657,28 @@ $('toggle').onclick = () => {
 };
 $('authForm').onsubmit = async e => {
   e.preventDefault();
-  const c = { email: $('em').value, password: $('pw').value };
+  const c = { email: $('em').value.trim(), password: $('pw').value };
   if (signup) {
     const name = $('nm').value.trim();
-    const phone = $('ph').value.trim();
+    const phone = normPhone($('ph').value);
     if (name.length < 2) return $('authMsg').textContent = 'Please enter your name.';
-    if (phone.replace(/\D/g, '').length < 8) return $('authMsg').textContent = 'Please enter your mobile number with country code.';
+    if (!phone) return $('authMsg').textContent = PHONE_HINT;
     c.options = { data: { full_name: name, phone }, emailRedirectTo: window.location.origin };
   }
   freshLogin = true;   /* a real sign-in on this page: land on the main page, not on the last view */
   const { data, error } = signup ? await sb.auth.signUp(c) : await sb.auth.signInWithPassword(c);
   if (error) { freshLogin = false; return $('authMsg').textContent = error.message; }
   if (signup && !data.session) $('authMsg').textContent = t('check');
+};
+$('phoneOut').onclick = () => $('out').click();
+$('phoneForm').onsubmit = async e => {
+  e.preventDefault();
+  const v = normPhone($('phNew').value), msg = $('phoneMsg'), btn = $('phoneBtn');
+  if (!v) return msg.textContent = PHONE_HINT;
+  btn.disabled = true; msg.textContent = 'Saving...';
+  const r = await sb.rpc('set_my_phone', { p: v });
+  if (r.error) { btn.disabled = false; msg.textContent = r.error.message; return; }
+  location.reload();
 };
 $('forgot').onclick = async () => {
   const em = $('em').value.trim(), msg = $('authMsg');
@@ -731,6 +757,7 @@ sb.auth.onAuthStateChange(async (_e, s) => {
     /* save the mobile number given at sign-up into the member's profile (first sign-in) */
     const mp = (s.user.user_metadata && s.user.user_metadata.phone) || '';
     if (mp && !me.phone) { await sb.rpc('set_my_phone', { p: mp }); me.phone = mp; }
+    if (!me.phone) { $('nav').classList.add('hidden'); setWelcome(s.user); show('phonereq'); return; }   /* mobile number is compulsory */
     if (!store.get('lg')) { store.set('lg', '1'); logAct('login'); }
     $('goAdmin').classList.toggle('hidden', !me.is_admin);
     setWelcome(s.user);
@@ -1644,7 +1671,8 @@ async function loadMembers() {
     const ph = h('button', { className: 'link', textContent: u.phone || 'Add', title: 'Click to edit (include country code, e.g. +919876543210)',
       onclick: async () => {
         const v = prompt('Mobile number with country code for ' + (u.full_name || u.email), u.phone || '+'); if (v === null) return;
-        const r = await sb.from('profiles').update({ phone: v.trim() || null }).eq('id', u.id);
+        const np = normPhone(v); if (!np) { alert(PHONE_HINT); return; }
+        const r = await sb.from('profiles').update({ phone: np }).eq('id', u.id);
         if (r.error) alert(r.error.message); loadMembers();
       } });
     const acc = h('button', { className: 'link', textContent: u.approved ? 'Active (pause)' : 'Paused (allow)', disabled: self,
