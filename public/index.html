@@ -292,6 +292,13 @@ body.home #auth{min-height:calc(100vh - 100px);min-height:calc(100dvh - 100px)}
   #bar .nowp{max-width:20%}
 }
 
+/* --- desktop and tablet: contents column is sized (by fitToc) so every title stays on one line --- */
+@media(min-width:801px){
+  #lib{grid-template-columns:var(--tocw,340px) minmax(0,1fr);gap:40px}
+  #toc #chapters li button{overflow-wrap:normal}
+  #toc #chapters li button .tt{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+}
+
 /* --- admin screens and anything under 900px --- */
 @media(max-width:900px){
   #admin{padding:28px 0 100px}
@@ -494,7 +501,7 @@ try{var k=Object.keys(localStorage).some(function(x){return /^sb-.*-auth-token$/
     <p class="om">ૐ</p>
     <p class="st">અહો!<br>સર્વોત્કૃષ્ટ શાંત રસમય સન્માર્ગ</p>
     <p class="st">અહો!<br>તે સર્વોત્કૃષ્ટ શાંતરસપ્રધાન<br>માર્ગના મૂળ સર્વજ્ઞદેવ</p>
-    <p class="st">અહો!<br>તે સર્વોત્કૃષ્ટ શાંતરસ સુપ્રતીત<br>કરાવ્યો એવા પરમ કૃપાળુ<br>સદગુરુ</p>
+    <p class="st">અહો!<br>તે સર્વોત્કૃષ્ટ શાંતરસ સુપ્રતીત<br>કરાવ્યો એવા પરમ કૃપાળુ<br>સદ્ગુરુદેવ</p>
     <p class="st">આ વિશ્વમાં સર્વકાળ તમે<br>જયવંત વર્તો, જયવંત વર્તો</p>
     <button type="button" class="btn" id="enterLib">Enter Library</button>
   </div>
@@ -890,11 +897,34 @@ async function loadChapters() {
   ]);
   chapters = data || [];
   tracksAll = tr || [];
+  fitToc();
   renderToc();
   if (me.is_admin) { renderTarget(); renderRows(); }
 }
 /* page number typed in by the admin for each chapter (stored in chapters.page_no, as text so ranges like 12-15 work) */
 const pgLabel = ch => { const v = (ch.page_no || '').toString().trim(); return !v ? '' : (/[-\u2013,]/.test(v) ? 'pp. ' : 'p. ') + v.replace(/\s*-\s*/g, '\u2013'); };
+
+/* widen the contents column to fit the longest title (at its indent level) on one line; capped so the book page keeps room */
+function fitToc() {
+  const root = document.documentElement;
+  if (matchMedia('(max-width:800px)').matches || !chapters.length) { root.style.removeProperty('--tocw'); return; }
+  const cx = (fitToc.cv || (fitToc.cv = document.createElement('canvas'))).getContext('2d');
+  const depthOf = ch => { let d = 1; for (let q = chapters.find(c => c.id === ch.parent_id); q; q = chapters.find(c => c.id === q.parent_id)) d++; return d; };
+  let need = 0;
+  chapters.forEach(ch => {
+    const d = depthOf(ch), fs = d === 1 ? 19.2 : d === 2 ? 16.8 : d === 3 ? 15.2 : 14.4;
+    cx.font = fs + "px Inter, 'Noto Serif Gujarati', serif";
+    const tw = cx.measureText((kids(ch.id).length ? '\u25B8 ' : '') + ttl(ch)).width;
+    cx.font = "300 12.8px Inter, sans-serif";
+    const pw = cx.measureText(pgLabel(ch)).width;
+    need = Math.max(need, 27 + (d - 1) * 20 + tw + (pw ? 14 + pw : 0) + 18 + 28);   /* border + padding + indent + text + gap + page label + right padding + slack */
+  });
+  const wrapW = (document.querySelector('.wrap') || document.body).clientWidth;
+  root.style.setProperty('--tocw', Math.round(Math.max(300, Math.min(need, wrapW * 0.46, 620))) + 'px');
+}
+let fitTimer;
+addEventListener('resize', () => { clearTimeout(fitTimer); fitTimer = setTimeout(fitToc, 150); });
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => fitToc());
 
 function renderToc() {
   const ol = $('chapters'); ol.replaceChildren();
@@ -907,6 +937,7 @@ function renderToc() {
     const tt = h('span', { className: 'tt', textContent: (k.length ? (expanded.has(ch.id) ? '\u25BE ' : '\u25B8 ') : '') + ttl(ch) });
     if (bms.some(x => x.chapter_id === ch.id)) { const mk = bmIcon(true, 'tag'); mk.title = 'Bookmarked'; tt.append(mk); }
     b.append(tt, h('span', { className: 'pg', textContent: pgLabel(ch) }));
+    b.title = ttl(ch);
     b.dataset.id = ch.id; b.dataset.d = d; b.style.setProperty('--d', d); b.setAttribute('aria-current', current === ch.id);
     ol.append(h('li', {}, b));
     if (expanded.has(ch.id)) walk(ch.id, d + 1);
