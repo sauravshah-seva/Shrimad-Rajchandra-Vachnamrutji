@@ -238,6 +238,11 @@ body.mainpg header .link:hover{border-color:#fff}
 #main .st{font-size:clamp(1.25rem,2.8vw,2rem);margin-bottom:22px}
 #main .btn{margin-top:14px;border-color:#fff;color:#fff;background:rgba(0,0,0,.25);text-shadow:0 1px 3px rgba(0,0,0,.6)}
 #main .btn:hover{background:#fff;color:var(--ink);text-shadow:none}
+#main .cta{display:flex;flex-direction:column;align-items:center}
+#main #contBtn{background:#c2a566;border-color:#c2a566;color:#1c1e3a;text-shadow:none;padding:14px 44px;box-shadow:0 6px 22px -8px rgba(0,0,0,.6)}
+#main #contBtn:hover{background:#fff;border-color:#fff}
+#contBtn .cl{display:block;font-weight:500;letter-spacing:.16em;text-transform:uppercase}
+#contBtn small{display:block;margin-top:5px;max-width:32ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:400 .8rem Inter,'Noto Serif Gujarati',sans-serif;letter-spacing:.02em;opacity:.85}
 
 /* =====================================================================
    MOBILE + TABLET: portrait and landscape
@@ -501,9 +506,12 @@ try{var k=Object.keys(localStorage).some(function(x){return /^sb-.*-auth-token$/
     <p class="om">ૐ</p>
     <p class="st">અહો!<br>સર્વોત્કૃષ્ટ શાંત રસમય સન્માર્ગ</p>
     <p class="st">અહો!<br>તે સર્વોત્કૃષ્ટ શાંતરસપ્રધાન<br>માર્ગના મૂળ સર્વજ્ઞદેવ</p>
-    <p class="st">અહો!<br>તે સર્વોત્કૃષ્ટ શાંતરસ સુપ્રતીત<br>કરાવ્યો એવા પરમ કૃપાળુ<br>સદગુરુ</p>
+    <p class="st">અહો!<br>તે સર્વોત્કૃષ્ટ શાંતરસ સુપ્રતીત<br>કરાવ્યો એવા પરમ કૃપાળુ<br>સદ્ગુરુદેવ</p>
     <p class="st">આ વિશ્વમાં સર્વકાળ તમે<br>જયવંત વર્તો, જયવંત વર્તો</p>
-    <button type="button" class="btn" id="enterLib">Enter Library</button>
+    <div class="cta">
+      <button type="button" class="btn hidden" id="contBtn" aria-label="Continue where you stopped"><span class="cl">Continue</span><small id="contSub"></small></button>
+      <button type="button" class="btn" id="enterLib">Enter Library</button>
+    </div>
   </div>
 </section>
 
@@ -710,7 +718,7 @@ if (/error_code=otp_expired|error=access_denied/.test(location.hash)) {
   history.replaceState(null, '', location.pathname);
 }
 $('out').onclick = () => { store.set('view', ''); store.set('lg', ''); sb.auth.signOut(); };
-$('goMain').onclick = () => show('main');
+$('goMain').onclick = () => { show('main'); renderContinue(); };
 new Image().src = 'Main-2.jpg'; /* preload so the change is instant */
 { const eb = $('enterLib'), peek = on => document.body.classList.toggle('peek', on);
   ['mouseenter', 'focus', 'pointerdown'].forEach(ev => eb.addEventListener(ev, () => peek(true)));
@@ -727,9 +735,37 @@ const logAct = (event, chapter_id, seconds) => {
 };
 
 /* last spot (chapter, track, second) kept in this browser, so a page refresh returns to the same place */
+/* the same spot is also saved in the member's account (table last_position) so Continue works on any device; if that table is missing the browser copy is used alone */
+let lpRemote = true, lpSent = 0;
+const lpPush = (v, force) => {
+  if (!lpRemote || !me.id) return;
+  const n = Date.now(); if (n - lpSent < (force ? 2000 : 20000)) return; lpSent = n;
+  sb.from('last_position').upsert({ user_id: me.id, chapter_id: v.chapter_id, track_index: v.ti || 0, position_sec: v.t || 0, updated_at: new Date().toISOString() })
+    .then(r => { if (r.error) lpRemote = false; }, () => {});
+};
 const lastPos = {
   get: () => { try { return JSON.parse(localStorage.getItem('last:' + me.id) || 'null'); } catch (e) { return null; } },
-  set: v => { try { if (me.id) localStorage.setItem('last:' + me.id, JSON.stringify(v)); } catch (e) {} }
+  set: (v, force) => { try { if (me.id) { v.at = Date.now(); localStorage.setItem('last:' + me.id, JSON.stringify(v)); } } catch (e) {} lpPush(v, force); }
+};
+/* at sign-in: if the account holds a newer spot than this browser (e.g. listened on another device), use it */
+async function loadLast() {
+  const r = await sb.from('last_position').select('chapter_id,track_index,position_sec,updated_at').eq('user_id', me.id).maybeSingle();
+  if (r.error) { lpRemote = false; return; }
+  lpRemote = true;
+  if (!r.data) return;
+  const at = Date.parse(r.data.updated_at) || 0, loc = lastPos.get();
+  if (!loc || (loc.at || 0) < at) { try { localStorage.setItem('last:' + me.id, JSON.stringify({ chapter_id: r.data.chapter_id, ti: r.data.track_index || 0, t: Number(r.data.position_sec) || 0, at })); } catch (e) {} }
+}
+/* the Continue button on the main page: opens the chapter, track and second where the member last stopped */
+function renderContinue() {
+  const l = lastPos.get(), ch = l && chapters.find(c => c.id === l.chapter_id), ok = !!ch && (me.approved || me.is_admin);
+  $('contBtn').classList.toggle('hidden', !ok);
+  if (ok) $('contSub').textContent = ttl(ch) + ' \u00B7 ' + fmtT(l.t || 0);
+}
+$('contBtn').onclick = () => {
+  const l = lastPos.get(), ch = l && chapters.find(c => c.id === l.chapter_id); if (!ch) return;
+  show('lib');
+  resumeBookmark({ chapter_id: ch.id, ti: l.ti || 0, t: l.t || 0 });
 };
 function restoreLast() {
   const l = lastPos.get(); if (!l || current !== null) return;
@@ -751,7 +787,7 @@ let shownUid = null, freshLogin = false;
 sb.auth.onAuthStateChange(async (_e, s) => {
   if (_e === 'PASSWORD_RECOVERY') recovering = true;
   $('nav').classList.toggle('hidden', !s || recovering);
-  if (!s) { me = {}; bms = []; shownUid = null; setWelcome(); return show('auth'); }
+  if (!s) { me = {}; bms = []; shownUid = null; setWelcome(); $('contBtn').classList.add('hidden'); return show('auth'); }
   if (recovering) { setWelcome(); return show('reset'); }   /* reset link: ask for a new password instead of opening the library */
   /* Supabase re-fires this on token refresh and when the tab regains focus.
      If the same user is already signed in, do nothing so the current page (e.g. admin) stays put. */
@@ -773,7 +809,7 @@ sb.auth.onAuthStateChange(async (_e, s) => {
     if (back === 'contact') { openContact(); return; }
     show(back === 'lib' ? 'lib' : 'main');
     if (!me.approved && !me.is_admin) $('reader').replaceChildren(h('p', { className: 'empty', textContent: t('paused') }));
-    else loadChapters().then(loadBookmarks).then(() => { if (back === 'lib') restoreLast(); });
+    else loadChapters().then(loadBookmarks).then(loadLast).then(() => { renderContinue(); if (back === 'lib') restoreLast(); });
   });
 });
 
@@ -991,7 +1027,7 @@ async function openChapter(ch, auto, resume) {
   stopBar();
   if (aurls.length || list.length) {
     if (!(resume && resume.quiet)) logAct('open', ch.id, 0);
-    lastPos.set({ chapter_id: ch.id, ti: resume ? resume.ti || 0 : 0, t: resume ? resume.t || 0 : 0 });
+    lastPos.set({ chapter_id: ch.id, ti: resume ? resume.ti || 0 : 0, t: resume ? resume.t || 0 : 0 }, true);
   }
   const parts = [h('h2', {}, ttl(ch), pgLabel(ch) ? h('span', { className: 'pg', textContent: pgLabel(ch) }) : '')];
   /* page-by-page mode: pages have their own track lists. timed mode: one audio, pages appear at set times. */
@@ -1064,7 +1100,7 @@ async function openChapter(ch, auto, resume) {
     const keep = force => {
       if (current !== ch.id || au.readyState < 1) return;
       const n = Date.now(); if (!force && n - lastSv < 3000) return; lastSv = n;
-      lastPos.set({ chapter_id: ch.id, ti, t: Math.floor(au.currentTime) });
+      lastPos.set({ chapter_id: ch.id, ti, t: Math.floor(au.currentTime) }, force);
     };
     keepPos = () => keep(true);
     au.addEventListener('timeupdate', () => keep(false));
