@@ -101,6 +101,22 @@ textarea{font:inherit;color:inherit;background:#fff;border:1px solid var(--line)
 /* set-new-password page (opened from the reset email) */
 #reset,#phonereq{min-height:60vh;display:grid;place-items:center;text-align:center;padding:40px 0}
 #reset h1,#phonereq h1{font-size:clamp(2rem,6vw,3rem);line-height:1.15;margin-bottom:12px}
+/* Continue card: shown in the library when nothing is open yet */
+.cont{position:relative;overflow:hidden;display:flex;align-items:center;gap:16px;width:100%;max-width:460px;margin-top:22px;padding:16px 22px 16px 16px;text-align:left;color:#f6efdc;cursor:pointer;
+  border:1px solid rgba(214,181,106,.55);border-radius:18px;background:linear-gradient(135deg,#25284d 0%,#1c1e3a 55%,#2d305a 100%);
+  box-shadow:0 14px 30px -14px rgba(28,30,58,.7),inset 0 1px 0 rgba(255,255,255,.12);transition:transform .3s,box-shadow .3s,border-color .3s}
+.cont::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.14) 50%,transparent 65%);transform:translateX(-120%);transition:transform .8s}
+.cont:hover{transform:translateY(-2px);border-color:#d6b56a;box-shadow:0 18px 34px -14px rgba(28,30,58,.8),0 0 0 3px rgba(214,181,106,.18),inset 0 1px 0 rgba(255,255,255,.16)}
+.cont:hover::after{transform:translateX(120%)}
+.cont:active{transform:none}
+.cont .ci{flex:none;display:grid;place-items:center;width:48px;height:48px;border-radius:50%;background:linear-gradient(145deg,#f3dc9a,#c9a24d 55%,#9a7a2e);color:#1c1e3a;box-shadow:0 4px 12px -4px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.5)}
+.cont .ci svg{width:18px;height:18px;margin-left:2px}
+.cont .ct{flex:1;min-width:0;display:block}
+.cont .cl{display:block;font:500 .74rem Inter,sans-serif;letter-spacing:.24em;text-transform:uppercase;color:#d6b56a}
+.cont .cs{display:block;margin-top:4px;font:400 1.05rem Inter,'Noto Serif Gujarati',serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cont .cm{display:block;margin-top:2px;font:300 .82rem Inter,sans-serif;letter-spacing:.03em;color:rgba(246,239,220,.72)}
+.cont .ca{flex:none;width:20px;height:20px;color:#d6b56a;opacity:.75;transition:transform .3s,opacity .3s}
+.cont:hover .ca{transform:translateX(4px);opacity:1}
 /* welcome line at the very top once signed in */
 #welcome{padding:14px 0 0;font-size:.95rem;color:var(--mute);letter-spacing:.02em}
 #welcome b{font-weight:500;color:var(--gold)}
@@ -238,11 +254,6 @@ body.mainpg header .link:hover{border-color:#fff}
 #main .st{font-size:clamp(1.25rem,2.8vw,2rem);margin-bottom:22px}
 #main .btn{margin-top:14px;border-color:#fff;color:#fff;background:rgba(0,0,0,.25);text-shadow:0 1px 3px rgba(0,0,0,.6)}
 #main .btn:hover{background:#fff;color:var(--ink);text-shadow:none}
-#main .cta{display:flex;flex-direction:column;align-items:center}
-#main #contBtn{background:#c2a566;border-color:#c2a566;color:#1c1e3a;text-shadow:none;padding:14px 44px;box-shadow:0 6px 22px -8px rgba(0,0,0,.6)}
-#main #contBtn:hover{background:#fff;border-color:#fff}
-#contBtn .cl{display:block;font-weight:500;letter-spacing:.16em;text-transform:uppercase}
-#contBtn small{display:block;margin-top:5px;max-width:32ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:400 .8rem Inter,'Noto Serif Gujarati',sans-serif;letter-spacing:.02em;opacity:.85}
 
 /* =====================================================================
    MOBILE + TABLET: portrait and landscape
@@ -508,10 +519,7 @@ try{var k=Object.keys(localStorage).some(function(x){return /^sb-.*-auth-token$/
     <p class="st">અહો!<br>તે સર્વોત્કૃષ્ટ શાંતરસપ્રધાન<br>માર્ગના મૂળ સર્વજ્ઞદેવ</p>
     <p class="st">અહો!<br>તે સર્વોત્કૃષ્ટ શાંતરસ સુપ્રતીત<br>કરાવ્યો એવા પરમ કૃપાળુ<br>સદગુરુદેવ</p>
     <p class="st">આ વિશ્વમાં સર્વકાળ તમે<br>જયવંત વર્તો, જયવંત વર્તો</p>
-    <div class="cta">
-      <button type="button" class="btn hidden" id="contBtn" aria-label="Continue where you stopped"><span class="cl">Continue</span><small id="contSub"></small></button>
-      <button type="button" class="btn" id="enterLib">Enter Library</button>
-    </div>
+    <button type="button" class="btn" id="enterLib">Enter Library</button>
   </div>
 </section>
 
@@ -718,13 +726,13 @@ if (/error_code=otp_expired|error=access_denied/.test(location.hash)) {
   history.replaceState(null, '', location.pathname);
 }
 $('out').onclick = () => { store.set('view', ''); store.set('lg', ''); sb.auth.signOut(); };
-$('goMain').onclick = () => { show('main'); renderContinue(); };
+$('goMain').onclick = () => show('main');
 new Image().src = 'Main-2.jpg'; /* preload so the change is instant */
 { const eb = $('enterLib'), peek = on => document.body.classList.toggle('peek', on);
   ['mouseenter', 'focus', 'pointerdown'].forEach(ev => eb.addEventListener(ev, () => peek(true)));
   ['mouseleave', 'blur'].forEach(ev => eb.addEventListener(ev, () => peek(false))); }
-$('enterLib').onclick = () => { show('lib'); loadChapters().then(loadBookmarks); };
-$('goLib').onclick = () => { show('lib'); loadChapters(); };
+$('enterLib').onclick = () => { show('lib'); loadChapters().then(loadBookmarks).then(loadLast).then(renderContinue); };
+$('goLib').onclick = () => { show('lib'); loadChapters().then(renderContinue); };
 $('goContact').onclick = () => openContact();
 $('goAdmin').onclick = () => { show('admin'); tab('up'); loadChapters(); loadStats(); };
 
@@ -756,17 +764,23 @@ async function loadLast() {
   const at = Date.parse(r.data.updated_at) || 0, loc = lastPos.get();
   if (!loc || (loc.at || 0) < at) { try { localStorage.setItem('last:' + me.id, JSON.stringify({ chapter_id: r.data.chapter_id, ti: r.data.track_index || 0, t: Number(r.data.position_sec) || 0, at })); } catch (e) {} }
 }
-/* the Continue button on the main page: opens the chapter, track and second where the member last stopped */
+/* Continue: in the library, while nothing is open yet, offer to reopen the chapter, track and second where the member last stopped */
+const lastChapter = () => { const l = lastPos.get(); return l && chapters.find(c => c.id === l.chapter_id) ? l : null; };
 function renderContinue() {
-  const l = lastPos.get(), ch = l && chapters.find(c => c.id === l.chapter_id), ok = !!ch && (me.approved || me.is_admin);
-  $('contBtn').classList.toggle('hidden', !ok);
-  if (ok) $('contSub').textContent = ttl(ch) + ' \u00B7 ' + fmtT(l.t || 0);
+  if (current !== null || !(me.approved || me.is_admin)) return;
+  const l = lastChapter(); if (!l) return;
+  const ch = chapters.find(c => c.id === l.chapter_id);
+  const svg = d => { const e = document.createElement('span'); e.innerHTML = d; return e.firstChild; };
+  const btn = h('button', { type: 'button', className: 'cont', ariaLabel: 'Continue where you stopped',
+    onclick: () => resumeBookmark({ chapter_id: ch.id, ti: l.ti || 0, t: l.t || 0 }) },
+    h('span', { className: 'ci' }, svg('<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 4.2v15.6a1 1 0 0 0 1.5.86l13-7.8a1 1 0 0 0 0-1.72l-13-7.8A1 1 0 0 0 6 4.2z"/></svg>')),
+    h('span', { className: 'ct' },
+      h('span', { className: 'cl', textContent: 'Continue' }),
+      h('span', { className: 'cs', textContent: ttl(ch) }),
+      h('span', { className: 'cm', textContent: (l.ti > 0 ? `Track ${l.ti + 1} \u00B7 ` : '') + fmtT(l.t || 0) })),
+    svg('<svg class="ca" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>'));
+  $('reader').replaceChildren(h('p', { className: 'empty', textContent: t('choose') }), btn);
 }
-$('contBtn').onclick = () => {
-  const l = lastPos.get(), ch = l && chapters.find(c => c.id === l.chapter_id); if (!ch) return;
-  show('lib');
-  resumeBookmark({ chapter_id: ch.id, ti: l.ti || 0, t: l.t || 0 });
-};
 function restoreLast() {
   const l = lastPos.get(); if (!l || current !== null) return;
   const ch = chapters.find(c => c.id === l.chapter_id); if (!ch) return;
@@ -787,7 +801,7 @@ let shownUid = null, freshLogin = false;
 sb.auth.onAuthStateChange(async (_e, s) => {
   if (_e === 'PASSWORD_RECOVERY') recovering = true;
   $('nav').classList.toggle('hidden', !s || recovering);
-  if (!s) { me = {}; bms = []; shownUid = null; setWelcome(); $('contBtn').classList.add('hidden'); return show('auth'); }
+  if (!s) { me = {}; bms = []; shownUid = null; setWelcome(); return show('auth'); }
   if (recovering) { setWelcome(); return show('reset'); }   /* reset link: ask for a new password instead of opening the library */
   /* Supabase re-fires this on token refresh and when the tab regains focus.
      If the same user is already signed in, do nothing so the current page (e.g. admin) stays put. */
@@ -809,7 +823,7 @@ sb.auth.onAuthStateChange(async (_e, s) => {
     if (back === 'contact') { openContact(); return; }
     show(back === 'lib' ? 'lib' : 'main');
     if (!me.approved && !me.is_admin) $('reader').replaceChildren(h('p', { className: 'empty', textContent: t('paused') }));
-    else loadChapters().then(loadBookmarks).then(loadLast).then(() => { renderContinue(); if (back === 'lib') restoreLast(); });
+    else loadChapters().then(loadBookmarks).then(loadLast).then(() => { if (back === 'lib') restoreLast(); else renderContinue(); });
   });
 });
 
@@ -876,7 +890,7 @@ function renderBookmarks() {
       h('button', { type: 'button', className: 'bmx', textContent: '\u00D7', title: 'Remove bookmark', ariaLabel: 'Remove bookmark', onclick: () => deleteBookmark(b.chapter_id) }));
   }));
   /* nothing open yet: offer to resume the latest bookmark */
-  if (current === null && list.length && (me.approved || me.is_admin)) {
+  if (current === null && list.length && !lastChapter() && (me.approved || me.is_admin)) {
     const b = list[0], ch = chapters.find(c => c.id === b.chapter_id);
     $('reader').replaceChildren(h('p', { className: 'empty', textContent: t('choose') }),
       h('button', { type: 'button', className: 'btn', textContent: `Resume: ${ttl(ch)} \u00B7 ${fmtT(b.t)}`, onclick: () => resumeBookmark(b) }));
