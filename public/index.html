@@ -117,6 +117,13 @@ textarea{font:inherit;color:inherit;background:#fff;border:1px solid var(--line)
 .cont .cm{display:block;margin-top:2px;font:300 .82rem Inter,sans-serif;letter-spacing:.03em;color:rgba(246,239,220,.72)}
 .cont .ca{flex:none;width:20px;height:20px;color:#d6b56a;opacity:.75;transition:transform .3s,opacity .3s}
 .cont:hover .ca{transform:translateX(4px);opacity:1}
+/* bookmarks listed under the Continue card */
+.bmrow{max-width:460px;margin-top:28px}
+.bmh{font:500 .74rem Inter,sans-serif;letter-spacing:.22em;text-transform:uppercase;color:var(--mute);margin-bottom:10px}
+.bmgo{display:flex;align-items:center;gap:12px;width:100%;margin-bottom:8px;padding:12px 16px;text-align:left;cursor:pointer;color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:14px;font:1rem Inter,'Noto Serif Gujarati',serif;transition:border-color .25s,box-shadow .25s,transform .25s}
+.bmgo:hover{border-color:var(--gold);box-shadow:0 8px 20px -12px rgba(166,133,60,.7);transform:translateY(-1px)}
+.bmgo .bmt{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bmgo .bmm{flex:none;font:300 .82rem Inter,sans-serif;color:var(--mute);white-space:nowrap}
 /* welcome line at the very top once signed in */
 #welcome{padding:14px 0 0;font-size:.95rem;color:var(--mute);letter-spacing:.02em}
 #welcome b{font-weight:500;color:var(--gold)}
@@ -766,20 +773,40 @@ async function loadLast() {
 }
 /* Continue: in the library, while nothing is open yet, offer to reopen the chapter, track and second where the member last stopped */
 const lastChapter = () => { const l = lastPos.get(); return l && chapters.find(c => c.id === l.chapter_id) ? l : null; };
+/* Continue: shown in the library while nothing is open yet, for every member.
+   It reopens the last spot (chapter, track, second); a member with no history starts at the first chapter that has audio.
+   The member's bookmarks are listed underneath, each one reopens exactly where it was set. */
 function renderContinue() {
   if (current !== null || !(me.approved || me.is_admin)) return;
-  const l = lastChapter(); if (!l) return;
-  const ch = chapters.find(c => c.id === l.chapter_id);
   const svg = d => { const e = document.createElement('span'); e.innerHTML = d; return e.firstChild; };
-  const btn = h('button', { type: 'button', className: 'cont', ariaLabel: 'Continue where you stopped',
-    onclick: () => resumeBookmark({ chapter_id: ch.id, ti: l.ti || 0, t: l.t || 0 }) },
-    h('span', { className: 'ci' }, svg('<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 4.2v15.6a1 1 0 0 0 1.5.86l13-7.8a1 1 0 0 0 0-1.72l-13-7.8A1 1 0 0 0 6 4.2z"/></svg>')),
-    h('span', { className: 'ct' },
-      h('span', { className: 'cl', textContent: 'Continue' }),
-      h('span', { className: 'cs', textContent: ttl(ch) }),
-      h('span', { className: 'cm', textContent: (l.ti > 0 ? `Track ${l.ti + 1} \u00B7 ` : '') + fmtT(l.t || 0) })),
-    svg('<svg class="ca" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>'));
-  $('reader').replaceChildren(h('p', { className: 'empty', textContent: t('choose') }), btn);
+  const nodes = [h('p', { className: 'empty', textContent: t('choose') })];
+  let l = lastChapter(), label = 'Continue', meta = '';
+  if (!l) {
+    const first = flat().map(x => x.c).find(c => tracksOf(c).length);
+    if (first) { l = { chapter_id: first.id, ti: 0, t: 0 }; label = 'Start listening'; meta = 'From the beginning'; }
+  }
+  const ch = l && chapters.find(c => c.id === l.chapter_id);
+  if (ch) {
+    if (!meta) meta = (l.ti > 0 ? `Track ${l.ti + 1} \u00B7 ` : '') + fmtT(l.t || 0);
+    nodes.push(h('button', { type: 'button', className: 'cont', ariaLabel: label,
+      onclick: () => resumeBookmark({ chapter_id: ch.id, ti: l.ti || 0, t: l.t || 0 }) },
+      h('span', { className: 'ci' }, svg('<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 4.2v15.6a1 1 0 0 0 1.5.86l13-7.8a1 1 0 0 0 0-1.72l-13-7.8A1 1 0 0 0 6 4.2z"/></svg>')),
+      h('span', { className: 'ct' },
+        h('span', { className: 'cl', textContent: label }),
+        h('span', { className: 'cs', textContent: ttl(ch) }),
+        h('span', { className: 'cm', textContent: meta })),
+      svg('<svg class="ca" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>')));
+  }
+  const marks = bms.filter(x => chapters.some(c => c.id === x.chapter_id));
+  if (marks.length) nodes.push(h('div', { className: 'bmrow' },
+    h('div', { className: 'bmh', textContent: 'Your bookmarks' }),
+    ...marks.map(x => {
+      const c = chapters.find(k => k.id === x.chapter_id);
+      return h('button', { type: 'button', className: 'bmgo', onclick: () => resumeBookmark(x) },
+        bmIcon(true), h('span', { className: 'bmt', textContent: ttl(c) }),
+        h('span', { className: 'bmm', textContent: ((x.ti || 0) > 0 ? `Track ${x.ti + 1} \u00B7 ` : '') + fmtT(x.t) }));
+    })));
+  $('reader').replaceChildren(...nodes);
 }
 function restoreLast() {
   const l = lastPos.get(); if (!l || current !== null) return;
@@ -801,12 +828,13 @@ let shownUid = null, freshLogin = false;
 sb.auth.onAuthStateChange(async (_e, s) => {
   if (_e === 'PASSWORD_RECOVERY') recovering = true;
   $('nav').classList.toggle('hidden', !s || recovering);
-  if (!s) { me = {}; bms = []; shownUid = null; setWelcome(); return show('auth'); }
+  if (!s) { me = {}; bms = []; shownUid = null; current = null; stopBar(); $('reader').replaceChildren(); setWelcome(); return show('auth'); }
   if (recovering) { setWelcome(); return show('reset'); }   /* reset link: ask for a new password instead of opening the library */
   /* Supabase re-fires this on token refresh and when the tab regains focus.
      If the same user is already signed in, do nothing so the current page (e.g. admin) stays put. */
   if (shownUid === s.user.id) return;
   shownUid = s.user.id;
+  current = null;   /* a new sign-in starts with nothing open, so Continue can be offered */
   setTimeout(async () => {
     sb.rpc('touch_me');
     const { data } = await sb.from('profiles').select('*').eq('id', s.user.id).single();
@@ -889,12 +917,8 @@ function renderBookmarks() {
       h('button', { type: 'button', onclick: () => resumeBookmark(b) }, bmIcon(true), ttl(ch), h('span', { className: 'bsub', textContent: `Track ${(b.ti || 0) + 1} \u00B7 ${fmtT(b.t)}` })),
       h('button', { type: 'button', className: 'bmx', textContent: '\u00D7', title: 'Remove bookmark', ariaLabel: 'Remove bookmark', onclick: () => deleteBookmark(b.chapter_id) }));
   }));
-  /* nothing open yet: offer to resume the latest bookmark */
-  if (current === null && list.length && !lastChapter() && (me.approved || me.is_admin)) {
-    const b = list[0], ch = chapters.find(c => c.id === b.chapter_id);
-    $('reader').replaceChildren(h('p', { className: 'empty', textContent: t('choose') }),
-      h('button', { type: 'button', className: 'btn', textContent: `Resume: ${ttl(ch)} \u00B7 ${fmtT(b.t)}`, onclick: () => resumeBookmark(b) }));
-  }
+  /* nothing open yet: offer Continue (last spot, or the newest bookmark) */
+  renderContinue();
 }
 
 /* ---------- reader ---------- */
@@ -955,10 +979,12 @@ async function loadChapters() {
 const pgLabel = ch => { const v = (ch.page_no || '').toString().trim(); return !v ? '' : (/[-\u2013,]/.test(v) ? 'pp. ' : 'p. ') + v.replace(/\s*-\s*/g, '\u2013'); };
 
 /* widen the contents column to fit the longest title (at its indent level) on one line; capped so the book page keeps room */
-function fitToc() {
+function fitToc() { try { fitToc2(); } catch (e) { document.documentElement.style.removeProperty('--tocw'); } }
+function fitToc2() {
   const root = document.documentElement;
   if (matchMedia('(max-width:800px)').matches || !chapters.length) { root.style.removeProperty('--tocw'); return; }
   const cx = (fitToc.cv || (fitToc.cv = document.createElement('canvas'))).getContext('2d');
+  if (!cx) return;
   const depthOf = ch => { let d = 1; for (let q = chapters.find(c => c.id === ch.parent_id); q; q = chapters.find(c => c.id === q.parent_id)) d++; return d; };
   let need = 0;
   chapters.forEach(ch => {
