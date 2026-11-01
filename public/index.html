@@ -39,7 +39,7 @@ body.hasbar #lib{padding-bottom:200px}
 #toc li button{display:block;width:100%;text-align:left;background:none;border:0;border-left:1px solid var(--line);padding:12px 18px;color:var(--mute);cursor:pointer;font:1.2rem Inter,'Noto Serif Gujarati',serif;transition:.3s}
 #toc li button:hover{color:var(--ink)}
 #toc li button[aria-current=true]{border-left-color:var(--gold);color:var(--ink);padding-left:26px}
-#reader h2{font-size:clamp(2rem,4vw,3rem);margin-bottom:24px}
+#reader h2{font-size:clamp(1.4rem,2.5vw,1.85rem);line-height:1.3;margin-bottom:18px}
 audio{width:100%;height:40px}
 .pages,.stage{display:grid;gap:36px}
 .stage{gap:10px}
@@ -101,6 +101,12 @@ textarea{font:inherit;color:inherit;background:#fff;border:1px solid var(--line)
 /* set-new-password page (opened from the reset email) */
 #reset,#phonereq{min-height:60vh;display:grid;place-items:center;text-align:center;padding:40px 0}
 #reset h1,#phonereq h1{font-size:clamp(2rem,6vw,3rem);line-height:1.15;margin-bottom:12px}
+/* Hidden | Show switch next to each uploaded file (admin) */
+.vis{display:inline-flex;margin-left:10px;vertical-align:middle;border:1px solid var(--line);border-radius:999px;overflow:hidden;flex:none}
+.vis button{border:0;background:#fff;color:var(--mute);font:400 .75rem Inter,sans-serif;padding:3px 12px;cursor:pointer;transition:background .2s,color .2s}
+.vis button+button{border-left:1px solid var(--line)}
+.vis button.on{background:#8c8c96;color:#fff}
+.vis button.on.sh{background:var(--gold)}
 /* Continue card: shown in the library when nothing is open yet */
 .cont{position:relative;overflow:hidden;display:flex;align-items:center;gap:16px;width:100%;max-width:460px;margin-top:22px;padding:16px 22px 16px 16px;text-align:left;color:#f6efdc;cursor:pointer;
   border:1px solid rgba(214,181,106,.55);border-radius:18px;background:linear-gradient(135deg,#25284d 0%,#1c1e3a 55%,#2d305a 100%);
@@ -356,7 +362,7 @@ body.home #auth{min-height:calc(100vh - 100px);min-height:calc(100dvh - 100px)}
   body.hasbar #lib{padding-bottom:260px}
   #toc h2{font-size:1.5rem;margin-bottom:12px}
   #toc ol{max-height:55vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
-  #reader h2{font-size:clamp(1.5rem,6vw,2.2rem);margin-bottom:16px}
+  #reader h2{font-size:clamp(1.2rem,5vw,1.5rem);margin-bottom:14px}
 
   /* bottom player: audio bar on its own row, then track buttons, speeds and bookmark */
   #bar{max-height:50vh;overflow-y:auto}
@@ -526,7 +532,7 @@ try{var k=Object.keys(localStorage).some(function(x){return /^sb-.*-auth-token$/
     <p class="om">ૐ</p>
     <p class="st">અહો!<br>સર્વોત્કૃષ્ટ શાંત રસમય સન્માર્ગ</p>
     <p class="st">અહો!<br>તે સર્વોત્કૃષ્ટ શાંતરસપ્રધાન<br>માર્ગના મૂળ સર્વજ્ઞદેવ</p>
-    <p class="st">અહો!<br>તે સર્વોત્કૃષ્ટ શાંતરસ સુપ્રતીત<br>કરાવ્યો એવા પરમ કૃપાળુ<br>સદ્‌ગુરુદેવ</p>
+    <p class="st">અહો!<br>તે સર્વોત્કૃષ્ટ શાંતરસ સુપ્રતીત<br>કરાવ્યો એવા પરમ કૃપાળુ<br>સદ્ગુરુદેવ</p>
     <p class="st">આ વિશ્વમાં સર્વકાળ તમે<br>જયવંત વર્તો, જયવંત વર્તો</p>
     <button type="button" class="btn" id="enterLib">Enter Library</button>
   </div>
@@ -942,9 +948,22 @@ const expanded = new Set();
 /* Chapter titles always show in Gujarati, falling back to English if none entered */
 const ttl = c => c.title_gu || c.title;
 /* all audio tracks of a chapter, in order (falls back to the old single audio_path) */
-const tracksOf = ch => {
+const tracksOf = (ch, all) => {
   const r = tracksAll.filter(x => x.chapter_id === ch.id).sort((a, b) => a.position - b.position);
-  return r.length ? r : (ch.audio_path ? [{ id: null, chapter_id: ch.id, position: 1, audio_path: ch.audio_path }] : []);
+  if (r.length) return all ? r : r.filter(x => x.visible !== false);   /* files marked Hidden are left out on the website */
+  return ch.audio_path ? [{ id: null, chapter_id: ch.id, position: 1, audio_path: ch.audio_path }] : [];
+};
+/* a page's track numbers count every uploaded track; when some are Hidden, renumber them to the tracks that remain */
+const remapPage = (p, ix) => {
+  const q = { ...p };
+  if (q.track) q.track = ix[q.track] || null;
+  if (Array.isArray(p.track_nums)) {
+    const keep = p.track_nums.map((n, k) => k).filter(k => ix[p.track_nums[k]]);
+    q.track_nums = keep.map(k => ix[p.track_nums[k]]);
+    q.track_times = keep.map(k => p.track_times && p.track_times[k]);
+    q.track_labels = keep.map(k => p.track_labels && p.track_labels[k]);
+  }
+  return q;
 };
 
 /* time helpers: "1:25" <-> seconds */
@@ -1059,14 +1078,15 @@ function offerNext(ch, au) {
 async function openChapter(ch, auto, resume) {
   current = ch.id;
   document.querySelectorAll('#chapters button').forEach(b => b.setAttribute('aria-current', b.dataset.id == ch.id));
-  const tr = tracksOf(ch);
+  const trAll = tracksOf(ch, true), tr = trAll.filter(x => x.visible !== false);
+  const ix = []; let vc = 0; trAll.forEach((x, i) => { ix[i + 1] = x.visible !== false ? ++vc : 0; });
   const [{ data: a }, { data: pgs }] = await Promise.all([
     tr.length ? sb.storage.from(B).createSignedUrls(tr.map(x => x.audio_path), 7200) : Promise.resolve({ data: [] }),
     sb.from('pages').select('*').eq('chapter_id', ch.id).order('position')
   ]);
   if (current !== ch.id) return; /* user already clicked another chapter */
   const aurls = (a || []).map(x => x.signedUrl);
-  const list = pgs || [];
+  const list = (pgs || []).filter(p => p.visible !== false).map(p => remapPage(p, ix));   /* pages marked Hidden are not shown */
   let urls = [];
   if (list.length) {
     const { data: u } = await sb.storage.from(B).createSignedUrls(list.map(p => p.image_path), 7200);
@@ -1287,6 +1307,7 @@ async function loadStats() {
 const guCache = new Map();
 async function toGujarati(text) {
   text = String(text || '').trim(); if (!text) return '';
+  if (/[\u0A80-\u0AFF]/.test(text)) return text;   /* already Gujarati: copy it exactly as typed, never translate it */
   if (guCache.has(text)) return guCache.get(text);
   try {
     const r = await fetch('https://api.mymemory.translated.net/get?langpair=en|gu&q=' + encodeURIComponent(text));
@@ -1384,7 +1405,7 @@ $('upForm').onsubmit = async e => {
   try {
     if (!total && tid) throw new Error('Choose audio files or page images to add, or pick "A new entry in the index" to save a title only.');
     let ch = chapters.find(c => c.id == tid), folder, up = async (p, f, o) => { const r = await sb.storage.from(B).upload(p, f, o); if (r.error) throw r.error; };
-    const trs = ch ? tracksOf(ch) : [];
+    const trs = ch ? tracksOf(ch, true) : [];
     if (!ch) {
       if (!$('cTitle').value) throw new Error('Please enter a title.');
       folder = crypto.randomUUID();
@@ -1424,7 +1445,7 @@ $('upForm').onsubmit = async e => {
       rows.push({ chapter_id: ch.id, position: n, image_path: p });
     }
     if (rows.length) { const r = await sb.from('pages').insert(rows); if (r.error) throw r.error; }
-    m.textContent = total ? 'Upload complete.' : 'Saved.'; e.target.reset(); audioFiles = []; imgFiles = [];
+    m.textContent = total ? 'Upload complete. New files stay hidden until you click Show next to them under "Pages & audio".' : 'Saved.'; e.target.reset(); audioFiles = []; imgFiles = [];
     $('aName').textContent = $('iName').textContent = ''; $('upbar').style.width = 0;
     $('cTitleGu').dataset.auto = ''; syncTarget();
     await loadChapters(); loadStats();
@@ -1443,7 +1464,7 @@ $('fT').onchange = async () => {
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
   if (!ch || !files.length) return;
   try {
-    const trs = tracksOf(ch);
+    const trs = tracksOf(ch, true);
     const folder = trs.length ? trs[0].audio_path.split('/')[0] : 'node-' + ch.id;
     const aps = [];
     for (const f of files) {
@@ -1460,11 +1481,32 @@ $('fT').onchange = async () => {
     const base = trs.length;
     const r = await sb.from('tracks').insert(aps.map((path, k) => ({ chapter_id: ch.id, position: base + k + 1, audio_path: path })));
     if (r.error) throw r.error;
-    say(`Added ${aps.length} track(s) to "${ch.title}". It now has ${base + aps.length}.`);
+    say(`Added ${aps.length} track(s) to "${ch.title}". It now has ${base + aps.length}. New tracks stay hidden until you click Show next to them.`);
     await loadChapters(); loadStats();
     if (after) after();
   } catch (err) { say('Upload failed: ' + err.message); }
 };
+
+/* ---------- admin: Hidden | Show switch for one uploaded file ---------- */
+function visCtl(row, save, note) {
+  const bH = h('button', { type: 'button', textContent: 'Hidden', title: 'Members cannot see this file' });
+  const bS = h('button', { type: 'button', className: 'sh', textContent: 'Show', title: 'Members can see this file' });
+  const wrap = h('span', { className: 'vis', role: 'group', ariaLabel: 'Visibility on the website' }, bH, bS);
+  const paint = () => {
+    const on = row.visible !== false;
+    bS.classList.toggle('on', on); bH.classList.toggle('on', !on);
+    bS.setAttribute('aria-pressed', on); bH.setAttribute('aria-pressed', !on);
+  };
+  const set = async v => {
+    if ((row.visible !== false) === v) return;
+    const r = await save(v);
+    if (r && r.error) { (note || alert)('Could not change visibility: ' + r.error.message + (/visible/.test(r.error.message) ? ' Run the visibility SQL once in the Supabase SQL editor.' : '')); return; }
+    row.visible = v; paint();
+    if (note) note(v ? 'Now shown to members.' : 'Now hidden from members.');
+  };
+  bH.onclick = () => set(false); bS.onclick = () => set(true);
+  paint(); return wrap;
+}
 
 /* ---------- admin: page timings ---------- */
 async function openTiming(ch, st) {
@@ -1472,7 +1514,7 @@ async function openTiming(ch, st) {
   box.classList.remove('hidden');
   box.replaceChildren(h('p', { className: 'note', textContent: 'Loading...' }));
   box.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  const tr = tracksOf(ch);
+  const tr = tracksOf(ch, true);
   const { data: pgs } = await sb.from('pages').select('*').eq('chapter_id', ch.id).order('position');
   const list = pgs || [];
   const [{ data: a }, { data: u }] = await Promise.all([
@@ -1563,7 +1605,7 @@ async function openTiming(ch, st) {
       onclick: () => {
         const before = tr.length;
         pickTracks(ch, s => { msg.textContent = s; }, () => {
-          const ch2 = chapters.find(c => c.id === ch.id) || ch, n2 = tracksOf(ch2).length;
+          const ch2 = chapters.find(c => c.id === ch.id) || ch, n2 = tracksOf(ch2, true).length;
           const d = capture(); for (let k = before + 1; k <= n2; k++) { d[i].list.push(k); d[i].times.push('0:00'); d[i].labels.push(''); }
           openTiming(ch2, { draft: d, note: `Added to page ${i + 1}. Click "Save timings" to keep it.` });
         });
@@ -1592,7 +1634,10 @@ async function openTiming(ch, st) {
       hint.textContent = lists.some(l => l.length) && !lists[i].length ? 'No audio on this page, so it is skipped while playing.' : '';
     });
     return { inp, tsel, mk,
-      row: h('div', { className: 'pgbox' }, thumb, h('span', { textContent: `Page ${i + 1}` }), tr.length ? tsel : h('span'), inp, mk, now, go,
+      row: h('div', { className: 'pgbox' },
+        h('div', { style: 'grid-column:1/-1;display:flex;align-items:center;gap:6px' }, h('span', { className: 'note', textContent: `Page ${i + 1} on the website:` }),
+          visCtl(p, v => sb.from('pages').update({ visible: v }).eq('chapter_id', ch.id).eq('position', p.position), t => { msg.textContent = t; })),
+        thumb, h('span', { textContent: `Page ${i + 1}` }), tr.length ? tsel : h('span'), inp, mk, now, go,
         subs, rem, hint, tr.length ? pick : h('span'), upl, opts) };
   });
   renderAll();
@@ -1669,7 +1714,8 @@ async function openTiming(ch, st) {
   box.replaceChildren(
     h('h3', { textContent: 'Pages & audio: ' + ch.title }),
     h('p', { className: 'note', textContent: 'Under each page, build its audio: pick a track you already uploaded, or upload a new one. Tracks on a page play one after the other, then the next page begins. Alternatively, leave the page audio empty and use the times: play one long track and click "Use current time" when each page should appear. Type the printed page number in "Page no." next to an audio (or next to a page time) and it shows as a marker on the player strip at that spot.' }),
-    h('div', { className: 'note' }, ...(tr.length ? tr.map((x, i) => h('div', { textContent: `Track ${i + 1}: ${x.audio_path.split('/').pop().replace(/^audio-(\d+-)*/, '')}` })) : [h('div', { textContent: 'No audio uploaded yet.' })])),
+    h('div', { className: 'note' }, ...(tr.length ? tr.map((x, i) => h('div', {}, `Track ${i + 1}: ${x.audio_path.split('/').pop().replace(/^audio-(\d+-)*/, '')}`,
+    x.id ? visCtl(x, v => sb.from('tracks').update({ visible: v }).eq('id', x.id), t => { msg.textContent = t; }) : '')) : [h('div', { textContent: 'No audio uploaded yet.' })])),
     h('div', { className: 'prev' }, au, pvLab),
     modeNote,
     ...(list.length ? inputs.map(x => x.row) : [h('p', { className: 'note', textContent: 'This chapter has no pages yet. Use "+ Add page images" below.' })]),
