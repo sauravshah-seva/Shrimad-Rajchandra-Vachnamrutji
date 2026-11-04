@@ -101,6 +101,10 @@ textarea{font:inherit;color:inherit;background:#fff;border:1px solid var(--line)
 /* set-new-password page (opened from the reset email) */
 #reset,#phonereq{min-height:60vh;display:grid;place-items:center;text-align:center;padding:40px 0}
 #reset h1,#phonereq h1{font-size:clamp(2rem,6vw,3rem);line-height:1.15;margin-bottom:12px}
+/* opt-out checkbox on the Contact page */
+#contact .chk{display:flex;align-items:center;gap:10px;margin:0 0 6px;cursor:pointer;color:var(--ink)}
+#contact .chk input{width:18px;height:18px;padding:0;border:0;accent-color:var(--gold);flex:none}
+#cNotifyMsg{min-height:1.4em;margin-bottom:26px}
 /* Hidden | Show switch next to each uploaded file (admin) */
 .vis{display:inline-flex;margin-left:10px;vertical-align:middle;border:1px solid var(--line);border-radius:999px;overflow:hidden;flex:none}
 .vis button{border:0;background:#fff;color:var(--mute);font:400 .75rem Inter,sans-serif;padding:3px 12px;cursor:pointer;transition:background .2s,color .2s}
@@ -169,7 +173,7 @@ body.mainpg #welcome b{color:#f0d78c}
 label{display:grid;gap:6px;color:var(--mute);font-size:.9rem}
 .drop{border:1px dashed var(--line);padding:22px;text-align:center;color:var(--mute);cursor:pointer;transition:.3s}
 .drop.over,.drop:hover{border-color:var(--gold);color:var(--ink)}
-.row{display:grid;grid-template-columns:60px 90px 1fr 1fr 150px 90px auto auto auto auto;gap:14px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.row{display:grid;grid-template-columns:60px 90px 1fr 1fr 150px 90px auto auto auto auto auto;gap:14px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
 table{width:100%;border-collapse:collapse;font-size:.92rem}
 th{text-align:left;color:var(--mute);font-weight:300;padding:8px 10px 8px 0;border-bottom:1px solid var(--line)}
 td{padding:12px 10px 12px 0;border-bottom:1px solid var(--line)}
@@ -313,7 +317,7 @@ body.home #auth{min-height:calc(100vh - 100px);min-height:calc(100dvh - 100px)}
 
 /* --- large tablets / small laptops: admin chapter rows get tighter columns --- */
 @media(min-width:901px) and (max-width:1100px){
-  .row{grid-template-columns:48px 70px 1fr 1fr 120px 80px auto auto auto auto;gap:8px 10px}
+  .row{grid-template-columns:48px 70px 1fr 1fr 120px 80px auto auto auto auto auto;gap:8px 10px}
   .row input,.row select{min-width:0;width:100%}
 }
 
@@ -532,7 +536,7 @@ try{var k=Object.keys(localStorage).some(function(x){return /^sb-.*-auth-token$/
     <p class="om">ૐ</p>
     <p class="st">અહો!<br>સર્વોત્કૃષ્ટ શાંત રસમય સન્માર્ગ</p>
     <p class="st">અહો!<br>તે સર્વોત્કૃષ્ટ શાંતરસપ્રધાન<br>માર્ગના મૂળ સર્વજ્ઞદેવ</p>
-    <p class="st">અહો!<br>તે સર્વોત્કૃષ્ટ શાંતરસ સુપ્રતીત<br>કરાવ્યો એવા પરમ કૃપાળુ<br>સદગુરુદેવ</p>
+    <p class="st">અહો!<br>તે સર્વોત્કૃષ્ટ શાંતરસ સુપ્રતીત<br>કરાવ્યો એવા પરમ કૃપાળુ<br>સદ્ગુરુદેવ</p>
     <p class="st">આ વિશ્વમાં સર્વકાળ તમે<br>જયવંત વર્તો, જયવંત વર્તો</p>
     <button type="button" class="btn" id="enterLib">Enter Library</button>
   </div>
@@ -547,6 +551,8 @@ try{var k=Object.keys(localStorage).some(function(x){return /^sb-.*-auth-token$/
 <section id="contact" class="hidden">
   <h2>Contact us</h2>
   <p class="lead">We would love to hear from you. Send us a message, a suggestion or your feedback, or tell us if something is not working.</p>
+  <label class="chk"><input type="checkbox" id="cNotify" checked> Email me when a new chapter is added</label>
+  <div class="meta" id="cNotifyMsg" role="status"></div>
   <form id="cForm">
     <div><div class="meta" style="margin-bottom:8px">What is this about?</div><div id="cKinds" role="radiogroup" aria-label="Type of message"></div></div>
     <label>Subject (optional)<input type="text" id="cSubject" maxlength="120" autocomplete="off"></label>
@@ -1724,6 +1730,26 @@ async function openTiming(ch, st) {
   );
 }
 
+/* ---------- admin: email members about a chapter (Cloudflare Worker + Brevo) ---------- */
+const NOTIFY_URL = 'https://notify-members.saurav-seva.workers.dev';   /* the Worker's address (see notify-members-worker.js) */
+async function notifyMembers(ch, btn) {
+  const say = t => { $('trkMsg').textContent = t; $('trkMsg').scrollIntoView({ block: 'nearest' }); };
+  const again = !!ch.announced_at;
+  if (!confirm(again ? `"${ttl(ch)}" was already announced on ${new Date(ch.announced_at).toLocaleDateString()}.\n\nSend the email again to all members?`
+                     : `Email all members about "${ttl(ch)}"?\n\nOnly members who have not turned these emails off will receive it.`)) return;
+  btn.disabled = true; say('Sending...');
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    const r = await fetch(NOTIFY_URL, { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + (session ? session.access_token : '') }, body: JSON.stringify({ chapter_id: ch.id, force: again }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || 'status ' + r.status);
+    if (j.nothing_shown) say(`Nothing in "${ttl(ch)}" is set to Show yet, so no email was sent. Set a file to Show under Pages & audio first.`);
+    else if (j.already) say('Already announced earlier. Click again to send it again.');
+    else { ch.announced_at = new Date().toISOString(); btn.textContent = 'Notified \u2713'; say(`Email sent to ${j.sent} member(s).`); }
+  } catch (e) { say('Could not send the email: ' + e.message); }
+  btn.disabled = false;
+}
+
 /* ---------- admin: chapters ---------- */
 function renderRows() {
   const box = $('rows');
@@ -1757,7 +1783,10 @@ function renderRows() {
       await sb.from('tracks').delete().in('chapter_id', ids);
       await sb.from('chapters').delete().eq('id', ch.id); await loadChapters(); loadStats();
     } });
-    const row = h('div', { className: 'row' }, pos, cno, ti, tg, par, pgn, save, tim, add, del);
+    const nf = h('button', { className: 'link', textContent: ch.announced_at ? 'Notified \u2713' : 'Notify members',
+      title: ch.announced_at ? 'Announced on ' + new Date(ch.announced_at).toLocaleDateString() + '. Click to send again.' : 'Email all members about this chapter',
+      onclick: () => notifyMembers(ch, nf) });
+    const row = h('div', { className: 'row' }, pos, cno, ti, tg, par, pgn, save, tim, add, nf, del);
     row.style.marginLeft = (d - 1) * 22 + 'px'; return row;
   }));
 }
@@ -1867,8 +1896,15 @@ function openContact() {
   show('contact');
   $('cAs').textContent = `Sending as ${me.full_name || 'you'}${me.email ? ' \u00B7 ' + me.email : ''}`;
   $('cMsg').textContent = '';
+  $('cNotify').checked = me.notify_new !== false; $('cNotifyMsg').textContent = '';
   loadMyMessages();
 }
+$('cNotify').onchange = async () => {
+  const box = $('cNotify'), on = box.checked, msg = $('cNotifyMsg');
+  const r = await sb.rpc('set_my_notify', { p: on });
+  if (r.error) { box.checked = !on; msg.textContent = 'Could not save this choice.' + (/set_my_notify|notify_new/.test(r.error.message) ? ' (Admin: run the new-chapter email SQL once.)' : ''); return; }
+  me.notify_new = on; msg.textContent = on ? 'You will get an email when a new chapter is added.' : 'You will not get new-chapter emails.';
+};
 $('cForm').onsubmit = async e => {
   e.preventDefault();
   const body = $('cBody').value.trim(), subject = $('cSubject').value.trim(), msg = $('cMsg'), btn = $('cSend');
