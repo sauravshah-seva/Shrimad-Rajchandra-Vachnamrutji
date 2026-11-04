@@ -101,6 +101,15 @@ textarea{font:inherit;color:inherit;background:#fff;border:1px solid var(--line)
 /* set-new-password page (opened from the reset email) */
 #reset,#phonereq{min-height:60vh;display:grid;place-items:center;text-align:center;padding:40px 0}
 #reset h1,#phonereq h1{font-size:clamp(2rem,6vw,3rem);line-height:1.15;margin-bottom:12px}
+/* email preview window (admin) */
+.mdl{position:fixed;inset:0;z-index:200;display:grid;place-items:center;padding:16px;background:rgba(20,22,45,.55)}
+.mdl .box{background:#fff;border-radius:18px;width:100%;max-width:620px;max-height:92vh;overflow:auto;padding:22px 24px;box-shadow:0 30px 70px -20px rgba(0,0,0,.55)}
+.mdl h3{font-size:1.25rem;margin:0 0 14px}
+.mdl .kv{font-size:.92rem;margin:4px 0;overflow-wrap:anywhere}
+.mdl .kv b{font-weight:500}
+.mdl .warn{margin:12px 0;padding:10px 14px;border-radius:12px;background:#fbf3dc;border:1px solid #e4cf8f;font-size:.9rem}
+.mdl iframe{display:block;width:100%;height:300px;border:1px solid var(--line);border-radius:12px;margin:14px 0;background:#fff}
+.mdl .acts2{display:flex;flex-wrap:wrap;gap:12px 22px;align-items:center;justify-content:flex-end}
 /* opt-out checkbox on the Contact page */
 #contact .chk{display:flex;align-items:center;gap:10px;margin:0 0 6px;cursor:pointer;color:var(--ink)}
 #contact .chk input{width:18px;height:18px;padding:0;border:0;accent-color:var(--gold);flex:none}
@@ -536,7 +545,7 @@ try{var k=Object.keys(localStorage).some(function(x){return /^sb-.*-auth-token$/
     <p class="om">ૐ</p>
     <p class="st">અહો!<br>સર્વોત્કૃષ્ટ શાંત રસમય સન્માર્ગ</p>
     <p class="st">અહો!<br>તે સર્વોત્કૃષ્ટ શાંતરસપ્રધાન<br>માર્ગના મૂળ સર્વજ્ઞદેવ</p>
-    <p class="st">અહો!<br>તે સર્વોત્કૃષ્ટ શાંતરસ સુપ્રતીત<br>કરાવ્યો એવા પરમ કૃપાળુ<br>સદગુરુદેવ</p>
+    <p class="st">અહો!<br>તે સર્વોત્કૃષ્ટ શાંતરસ સુપ્રતીત<br>કરાવ્યો એવા પરમ કૃપાળુ<br>સદ્ગુરુદેવ</p>
     <p class="st">આ વિશ્વમાં સર્વકાળ તમે<br>જયવંત વર્તો, જયવંત વર્તો</p>
     <button type="button" class="btn" id="enterLib">Enter Library</button>
   </div>
@@ -1732,21 +1741,54 @@ async function openTiming(ch, st) {
 
 /* ---------- admin: email members about a chapter (Cloudflare Worker + Brevo) ---------- */
 const NOTIFY_URL = 'https://notify-members.saurav-seva.workers.dev';   /* the Worker's address (see notify-members-worker.js) */
+async function notifyCall(body) {
+  const { data: { session } } = await sb.auth.getSession();
+  const r = await fetch(NOTIFY_URL, { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + (session ? session.access_token : '') }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || 'status ' + r.status);
+  return j;
+}
+/* the window that shows the email, the recipient count and the Send / Cancel buttons */
+function showNotifyPreview(ch, pv, onSend) {
+  const prev = document.activeElement;
+  const close = () => { document.removeEventListener('keydown', onKey); mdl.remove(); if (prev && prev.focus) prev.focus(); };
+  const onKey = e => { if (e.key === 'Escape') close(); };
+  const frame = h('iframe', { title: 'Email preview' });
+  frame.setAttribute('sandbox', ''); frame.srcdoc = pv.html;
+  const n = pv.count, can = n > 0;
+  const send = h('button', { type: 'button', className: 'btn', disabled: !can, textContent: can ? `${pv.already ? 'Send again to' : 'Send to'} ${n} member${n === 1 ? '' : 's'}` : 'No one to send to',
+    onclick: () => { close(); onSend(); } });
+  const cancel = h('button', { type: 'button', className: 'link', textContent: 'Cancel', onclick: close });
+  const mdl = h('div', { className: 'mdl', role: 'dialog', ariaModal: 'true', ariaLabel: 'Email preview', onclick: e => { if (e.target === mdl) close(); } },
+    h('div', { className: 'box' },
+      h('h3', { textContent: 'Preview: email to members' }),
+      h('div', { className: 'kv' }, h('b', { textContent: 'Subject: ' }), pv.subject),
+      h('div', { className: 'kv' }, h('b', { textContent: 'Will be sent to: ' }), can ? `${n} member${n === 1 ? '' : 's'} (approved members who have not turned these emails off)` : 'nobody: no approved member is set to receive these emails'),
+      pv.test ? h('div', { className: 'warn', textContent: 'Test mode is on: only the test address will receive this email. Nobody else is emailed.' }) : '',
+      pv.already ? h('div', { className: 'warn', textContent: `This chapter was already announced on ${new Date(pv.already).toLocaleDateString()}. Sending again emails members a second time.` }) : '',
+      frame,
+      h('div', { className: 'acts2' }, cancel, send)));
+  document.addEventListener('keydown', onKey);
+  document.body.append(mdl);
+  cancel.focus();
+}
 async function notifyMembers(ch, btn) {
   const say = t => { $('trkMsg').textContent = t; $('trkMsg').scrollIntoView({ block: 'nearest' }); };
-  const again = !!ch.announced_at;
-  if (!confirm(again ? `"${ttl(ch)}" was already announced on ${new Date(ch.announced_at).toLocaleDateString()}.\n\nSend the email again to all members?`
-                     : `Email all members about "${ttl(ch)}"?\n\nOnly members who have not turned these emails off will receive it.`)) return;
-  btn.disabled = true; say('Sending...');
+  btn.disabled = true; say('Preparing the preview...');
   try {
-    const { data: { session } } = await sb.auth.getSession();
-    const r = await fetch(NOTIFY_URL, { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + (session ? session.access_token : '') }, body: JSON.stringify({ chapter_id: ch.id, force: again }) });
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(j.error || 'status ' + r.status);
-    if (j.nothing_shown) say(`Nothing in "${ttl(ch)}" is set to Show yet, so no email was sent. Set a file to Show under Pages & audio first.`);
-    else if (j.already) say('Already announced earlier. Click again to send it again.');
-    else { ch.announced_at = new Date().toISOString(); btn.textContent = 'Notified \u2713'; say(`Email sent to ${j.sent} member(s).`); }
-  } catch (e) { say('Could not send the email: ' + e.message); }
+    const pv = await notifyCall({ chapter_id: ch.id, preview: true });
+    if (pv.nothing_shown) { say(`Nothing in "${ttl(ch)}" is set to Show yet, so no email can be sent. Set a file to Show under Pages & audio first.`); btn.disabled = false; return; }
+    say('');
+    showNotifyPreview(ch, pv, async () => {
+      btn.disabled = true; say('Sending...');
+      try {
+        const j = await notifyCall({ chapter_id: ch.id, force: !!pv.already });
+        if (j.test) say(`Test run: ${j.sent} email sent to the test address only. Nobody else was emailed and the chapter is not marked as announced.`);
+        else { ch.announced_at = new Date().toISOString(); btn.textContent = 'Notified \u2713'; say(`Email sent to ${j.sent} member(s).`); }
+      } catch (e) { say('Could not send the email: ' + e.message); }
+      btn.disabled = false;
+    });
+  } catch (e) { say('Could not prepare the email: ' + e.message); }
   btn.disabled = false;
 }
 
